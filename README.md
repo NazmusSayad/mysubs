@@ -31,6 +31,7 @@ Example:
   "$schema": "https://github.com/NazmusSayad/mysubs/raw/refs/heads/schema/schema.json",
   "contrast": 0.4,
   "nerdFont": true,
+  "maxWidth": 120,
   "codex": {
     "accounts": [{ "name": "work", "configDir": "~/.config/codex" }]
   },

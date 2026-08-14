@@ -11,6 +11,7 @@ export const configSchema = z
     detect: z.boolean().default(true),
     contrast: z.number().min(0).max(1).default(0.4),
     nerdFont: z.boolean().default(false),
+    maxWidth: z.number().min(80).default(120),
   })
   .passthrough()
 const providerConfigSchema = z
@@ -30,6 +31,7 @@ export type Config = {
   detect: boolean
   contrast: number
   nerdFont: boolean
+  maxWidth: number
   accounts: Record<string, ProviderAccount[]>
   options: Record<string, ProviderOptions>
 }
@@ -78,6 +80,7 @@ export function loadConfig(): Config {
     detect: parsed.data.detect,
     contrast: parsed.data.contrast,
     nerdFont: parsed.data.nerdFont,
+    maxWidth: parsed.data.maxWidth,
     accounts,
     options,
   }

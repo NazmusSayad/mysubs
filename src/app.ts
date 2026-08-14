@@ -27,6 +27,20 @@ async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
       throw new Error(`no options were loaded for provider ${provider}`)
     }
 
+    if (config.detect) {
+      try {
+        const detected = await entry.detectDefaults()
+        for (const account of detected) {
+          targets.push({ provider, account, options })
+        }
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error)
+        process.stderr.write(
+          `mysubs: could not detect ${provider} accounts: ${reason}\n`
+        )
+      }
+    }
+
     const configuredNames = new Set<string>()
     for (const account of config.accounts[provider] ?? []) {
       const name = account.name
@@ -43,20 +57,6 @@ async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
         ...(typeof name === 'string' ? { sourceName: name } : {}),
         sourceType: 'manual',
       })
-    }
-
-    if (!config.detect) continue
-
-    try {
-      const detected = await entry.detectDefaults()
-      for (const account of detected) {
-        targets.push({ provider, account, options })
-      }
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error)
-      process.stderr.write(
-        `mysubs: could not detect ${provider} accounts: ${reason}\n`
-      )
     }
   }
 
@@ -173,7 +173,7 @@ export async function runUsage(options: {
       results.push(resolved)
       if (options.json !== true) {
         process.stdout.write(
-          `${render([resolved], config.contrast, config.nerdFont)}\n`
+          `${render([resolved], config.contrast, config.nerdFont, config.maxWidth)}\n`
         )
       }
     } finally {

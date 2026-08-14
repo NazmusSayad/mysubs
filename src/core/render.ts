@@ -189,11 +189,13 @@ function drawBar(
 export function render(
   results: AccountUsageResult[],
   contrast: number,
-  nerdFont: boolean
+  nerdFont: boolean,
+  maxWidth: number
 ): string {
   if (results.length === 0) return ''
 
-  const available = (process.stdout.columns ?? 80) - PADDING * 2
+  const columns = Math.min(process.stdout.columns ?? 80, maxWidth)
+  const available = columns - PADDING * 2
   const fullBarWidth = Math.max(
     MIN_BAR_WIDTH,
     available -
