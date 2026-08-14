@@ -1,3 +1,5 @@
+// Do not change this file unless the user explicitly asks to write code here.
+
 import { Prettify } from 'daily-code'
 import type { z } from 'zod'
 

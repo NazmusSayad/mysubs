@@ -1,3 +1,5 @@
+// Do not change this file unless the user explicitly asks to write code here.
+
 import type { ProviderEntry } from '../core/provider'
 import { fetchClaudeAccount } from './claude'
 import { claudeAccountSchema, claudeOptionsSchema } from './claude/config'
