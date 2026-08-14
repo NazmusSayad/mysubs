@@ -3,7 +3,6 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { expandHome } from '../../utils/path'
-import type { ClaudeAccount } from './config'
 
 export const KEYCHAIN_SERVICE = 'Claude Code-credentials'
 export const SECURITY_BIN = '/usr/bin/security'
@@ -43,10 +42,14 @@ function hasKeychainCredentials(): boolean {
   return false
 }
 
-export function detectClaudeAccounts(): ClaudeAccount[] {
+export async function detectClaudeAccounts() {
   const root = claudeConfigRoot()
 
-  if (fs.existsSync(credentialsPath(root))) return [{ configDir: root }]
-  if (hasKeychainCredentials()) return [{ configDir: root }]
+  if (fs.existsSync(credentialsPath(root))) {
+    return [{ configDir: root, __type: 'account' as const }]
+  }
+  if (hasKeychainCredentials()) {
+    return [{ configDir: root, __type: 'account' as const }]
+  }
   return []
 }

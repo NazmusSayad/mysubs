@@ -3,23 +3,17 @@ import os from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
 import { providers } from '../providers'
+import type { ProviderAccount, ProviderOptions } from './types'
 
-const configSchema = z.object({
-  cacheTTL: z.union([z.number(), z.string()]).default('5m'),
-  detect: z.boolean().default(true),
-  ...Object.fromEntries(
-    Object.entries(providers).map(([id, provider]) => [
-      id,
-      z.object({ accounts: z.array(provider.accountSchema) }).optional(),
-    ])
-  ),
-})
-
-export type Config = {
-  cacheTTL: number | string
-  detect: boolean
-  accounts: Record<string, unknown[]>
-}
+const configSchema = z
+  .object({
+    cacheTTL: z.union([z.number(), z.string()]).default('5m'),
+    detect: z.boolean().default(true),
+  })
+  .passthrough()
+const providerConfigSchema = z
+  .object({ accounts: z.unknown().optional() })
+  .passthrough()
 
 export function configPath(): string {
   const xdg = process.env.XDG_CONFIG_HOME
@@ -29,7 +23,7 @@ export function configPath(): string {
   return path.join(os.homedir(), '.config', 'mysubs', 'config.json')
 }
 
-export function loadConfig(): Config {
+export function loadConfig() {
   const file = configPath()
   let raw: unknown = {}
 
@@ -43,26 +37,83 @@ export function loadConfig(): Config {
 
   const parsed = configSchema.safeParse(raw)
   if (!parsed.success) {
-    const issues = parsed.error.issues
-      .map((issue) => `  ${issue.path.join('.')}: ${issue.message}`)
-      .join('\n')
-    throw new Error(`${file} is invalid:\n${issues}`)
+    throw new Error(`${file} is invalid`)
   }
 
-  const values: Record<string, unknown> = parsed.data
-  const accounts: Record<string, unknown[]> = {}
-  for (const [id, provider] of Object.entries(providers)) {
-    const providerConfig = values[id]
-    if (providerConfig === undefined) {
-      accounts[id] = []
+  const accounts: Record<string, ProviderAccount[]> = {}
+  const options: Record<string, ProviderOptions> = {}
+
+  for (const [provider, entry] of Object.entries(providers)) {
+    const value = parsed.data[provider]
+    if (value === undefined) {
+      const parsedOptions = entry.optionsSchema.parse({})
+      if (
+        typeof parsedOptions !== 'object' ||
+        parsedOptions === null ||
+        Array.isArray(parsedOptions) ||
+        !('cache' in parsedOptions) ||
+        typeof parsedOptions.cache !== 'boolean' ||
+        !('__type' in parsedOptions) ||
+        parsedOptions.__type !== 'options'
+      ) {
+        throw new Error(`${file} is invalid`)
+      }
+      options[provider] = {
+        ...parsedOptions,
+        cache: parsedOptions.cache,
+        __type: 'options',
+      }
+      accounts[provider] = []
       continue
     }
-    accounts[id] = (providerConfig as { accounts: unknown[] }).accounts
+
+    const providerConfig = providerConfigSchema.safeParse(value)
+    if (!providerConfig.success) {
+      throw new Error(`${file} is invalid`)
+    }
+
+    const configured = providerConfig.data.accounts
+    if (configured === undefined) {
+      accounts[provider] = []
+    } else {
+      const parsedAccounts = z.array(entry.accountSchema).parse(configured)
+      accounts[provider] = []
+      for (const parsedAccount of parsedAccounts) {
+        if (
+          typeof parsedAccount !== 'object' ||
+          parsedAccount === null ||
+          Array.isArray(parsedAccount) ||
+          !('__type' in parsedAccount) ||
+          parsedAccount.__type !== 'account'
+        ) {
+          throw new Error(`${file} is invalid`)
+        }
+        accounts[provider].push({ ...parsedAccount, __type: 'account' })
+      }
+    }
+    const parsedOptions = entry.optionsSchema.parse(providerConfig.data)
+    if (
+      typeof parsedOptions !== 'object' ||
+      parsedOptions === null ||
+      Array.isArray(parsedOptions) ||
+      !('cache' in parsedOptions) ||
+      typeof parsedOptions.cache !== 'boolean' ||
+      !('__type' in parsedOptions) ||
+      parsedOptions.__type !== 'options'
+    ) {
+      throw new Error(`${file} is invalid`)
+    }
+    options[provider] = {
+      ...parsedOptions,
+      cache: parsedOptions.cache,
+      __type: 'options',
+    }
   }
 
   return {
     cacheTTL: parsed.data.cacheTTL,
     detect: parsed.data.detect,
     accounts,
+    options,
   }
 }

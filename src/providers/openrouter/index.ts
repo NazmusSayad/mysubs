@@ -1,11 +1,13 @@
 import { z } from 'zod'
-import type { BaseProvider } from '../../core/provider'
-import type { ProviderResult, UsageResource } from '../../core/usage'
+import type {
+  AccountSubscriptionBalanceUsage,
+  AccountSubscriptionConsumptionUsage,
+  AccountUsageResult,
+  ProviderAccount,
+  ProviderOptions,
+} from '../../core/types'
 import { resolveSecret } from '../../utils/secret'
-import {
-  openrouterAccountSchema,
-  type OpenRouterAccount,
-} from './config'
+import { openrouterAccountSchema } from './config'
 
 const CREDITS_URL = 'https://openrouter.ai/api/v1/credits'
 const KEY_URL = 'https://openrouter.ai/api/v1/key'
@@ -31,27 +33,17 @@ type Outcome =
   | { kind: 'data'; data: Record<string, unknown> }
   | { kind: 'auth' }
   | { kind: 'failed'; error: Error }
+type UsageResource =
+  AccountSubscriptionBalanceUsage | AccountSubscriptionConsumptionUsage
 
-export class OpenRouterProvider implements BaseProvider {
-  private readonly account: OpenRouterAccount
+class OpenRouterProvider {
+  private readonly account: z.infer<typeof openrouterAccountSchema>
 
   constructor(account: unknown) {
     this.account = openrouterAccountSchema.parse(account)
   }
 
-  get accountKey() {
-    return this.account.apiKey
-  }
-
-  get name() {
-    return this.account.name
-  }
-
-  get accountColor() {
-    return this.account.color
-  }
-
-  async fetchUsage(): Promise<ProviderResult> {
+  async fetchUsage(): Promise<AccountUsageResult> {
     const apiKey = resolveSecret(this.account.apiKey)
 
     const [credits, key] = await Promise.all([
@@ -60,8 +52,8 @@ export class OpenRouterProvider implements BaseProvider {
     ])
 
     const usage: Record<string, UsageResource> = {}
-    let plan: string | null = null
-    let label: string | null = null
+    let accountPlan: string | null = null
+    let accountInfo: string | null = null
 
     if (credits.kind === 'data') {
       const parsed = creditsSchema.safeParse(credits.data)
@@ -109,18 +101,23 @@ export class OpenRouterProvider implements BaseProvider {
           }
         }
 
-        if (parsed.data.is_free_tier === true) plan = 'Free tier'
-        if (parsed.data.is_free_tier === false) plan = 'Pay as you go'
+        if (parsed.data.is_free_tier === true) accountPlan = 'Free tier'
+        if (parsed.data.is_free_tier === false) accountPlan = 'Pay as you go'
 
         const raw = parsed.data.label
-        if (typeof raw === 'string' && raw.trim() !== '') label = raw.trim()
+        if (typeof raw === 'string' && raw.trim() !== '')
+          accountInfo = raw.trim()
       }
     }
 
     if (Object.keys(usage).length > 0) {
-      const result: ProviderResult = { usage }
-      if (plan !== null) result.plan = plan
-      if (label !== null) result.label = label
+      const result: AccountUsageResult = {
+        provider: 'openrouter',
+        color: this.account.color ?? '#6467f2',
+        usage,
+      }
+      if (accountPlan !== null) result.accountPlan = accountPlan
+      if (accountInfo !== null) result.accountInfo = accountInfo
       return result
     }
 
@@ -229,6 +226,22 @@ export class OpenRouterProvider implements BaseProvider {
       kind: 'consumption',
       unit: 'usd',
       used: Math.max(0, amount),
+    }
+  }
+}
+
+export async function fetchOpenRouterAccount(
+  account: ProviderAccount,
+  _options: ProviderOptions
+): Promise<AccountUsageResult> {
+  const parsed = openrouterAccountSchema.parse(account)
+  try {
+    return await new OpenRouterProvider(parsed).fetchUsage()
+  } catch (error) {
+    return {
+      provider: 'openrouter',
+      color: parsed.color ?? '#6467f2',
+      error: error instanceof Error ? error.message : String(error),
     }
   }
 }

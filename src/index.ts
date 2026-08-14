@@ -1,49 +1,13 @@
 #!/usr/bin/env node
 import { Command } from '@commander-js/extra-typings'
 import readline from 'node:readline'
-import { resolveAccounts, type ResolvedAccount } from './core/accounts'
 import { configPath, loadConfig } from './core/config'
-import { fetchProviderUsages } from './core/fetch'
 import { render } from './core/render'
+import type { ProviderAccount, ProviderOptions } from './core/types'
+import { cacheKey } from './lib/crypto'
+import { providers } from './providers'
+import { parseTTL, readCache, writeCache } from './utils/cache'
 import { getKey, setKey } from './utils/keyring'
-
-function select(
-  all: ResolvedAccount[],
-  subs: string | undefined
-): ResolvedAccount[] {
-  if (subs === undefined) return all
-
-  const selected: ResolvedAccount[] = []
-  for (const raw of subs.split(',')) {
-    const token = raw.trim()
-    if (token === '') continue
-
-    const separator = token.indexOf(':')
-    const provider = separator === -1 ? token : token.slice(0, separator)
-    const account = separator === -1 ? null : token.slice(separator + 1)
-
-    const matches = all.filter((target) => {
-      if (target.providerId !== provider) return false
-      if (account === null) return true
-      return target.name === account
-    })
-
-    if (matches.length === 0) {
-      const configured = all
-        .map((target) => `${target.providerId}:${target.name}`)
-        .join(', ')
-      throw new Error(
-        `no configured account matches "${token}". configured: ${configured === '' ? '(none)' : configured}`
-      )
-    }
-
-    for (const match of matches) {
-      if (!selected.includes(match)) selected.push(match)
-    }
-  }
-
-  return selected
-}
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
@@ -100,7 +64,45 @@ async function runUsage(options: {
   force?: boolean
 }): Promise<number> {
   const config = loadConfig()
-  const all = resolveAccounts(config)
+  const all: {
+    provider: string
+    account: ProviderAccount
+    options: ProviderOptions
+    sourceName?: string
+    sourceType?: 'manual'
+  }[] = []
+
+  for (const [provider, entry] of Object.entries(providers)) {
+    const names = new Set<string>()
+
+    for (const account of config.accounts[provider] ?? []) {
+      const name = account.name
+      if (typeof name === 'string') {
+        if (names.has(name)) {
+          throw new Error(`duplicate ${provider} account name: ${name}`)
+        }
+        names.add(name)
+      }
+      all.push({
+        provider,
+        account,
+        options: config.options[provider],
+        ...(typeof name === 'string' ? { sourceName: name } : {}),
+        sourceType: 'manual',
+      })
+    }
+
+    if (!config.detect) continue
+
+    try {
+      const detected = await entry.detectDefaults()
+      for (const account of detected) {
+        all.push({ provider, account, options: config.options[provider] })
+      }
+    } catch {
+      continue
+    }
+  }
 
   if (all.length === 0) {
     process.stderr.write(
@@ -109,21 +111,73 @@ async function runUsage(options: {
     return 1
   }
 
-  const report = await fetchProviderUsages(select(all, options.subs), config, {
-    force: options.force,
-  })
-
-  if (options.json === true) {
-    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`)
+  const selected = [] as typeof all
+  if (options.subs === undefined) {
+    selected.push(...all)
   } else {
-    process.stdout.write(`${render(report)}\n`)
+    for (const raw of options.subs.split(',')) {
+      const token = raw.trim()
+      if (token === '') continue
+
+      const separator = token.indexOf(':')
+      const provider = separator === -1 ? token : token.slice(0, separator)
+      const account = separator === -1 ? null : token.slice(separator + 1)
+      const matches = all.filter((target) => {
+        if (target.provider !== provider) return false
+        if (account === null) return true
+        return target.sourceName === account
+      })
+
+      if (matches.length === 0) {
+        throw new Error(`no configured account matches "${token}"`)
+      }
+      for (const match of matches) {
+        if (!selected.includes(match)) selected.push(match)
+      }
+    }
   }
 
-  if (
-    report.subscriptions.some(
-      (subscription) => subscription.error !== undefined
-    )
-  ) {
+  const ttl = parseTTL(config.cacheTTL)
+  const results = await Promise.all(
+    selected.map(async (target) => {
+      const key = cacheKey(target.provider, target.account)
+      if (key !== null && target.options.cache && options.force !== true) {
+        const cached = readCache(key, target.provider)
+        if (cached !== null) return cached
+      }
+
+      const result = await providers[target.provider].fetchAccount(
+        target.account,
+        target.options
+      )
+      const resolved = {
+        ...result,
+        ...(target.sourceName === undefined
+          ? {}
+          : { sourceName: target.sourceName }),
+        ...(target.sourceType === undefined
+          ? {}
+          : { sourceType: target.sourceType }),
+      }
+
+      if (key !== null && target.options.cache && result.error === undefined) {
+        try {
+          writeCache(key, Date.now() + ttl, resolved)
+        } catch {
+          return resolved
+        }
+      }
+      return resolved
+    })
+  )
+
+  if (options.json === true) {
+    process.stdout.write(`${JSON.stringify(results, null, 2)}\n`)
+  } else {
+    process.stdout.write(`${render(results)}\n`)
+  }
+
+  if (results.some((result) => result.error !== undefined)) {
     return 1
   }
   return 0

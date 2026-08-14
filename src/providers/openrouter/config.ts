@@ -6,6 +6,10 @@ export const openrouterAccountSchema = z.object({
   name: z.string().min(1).optional(),
   apiKey: secretRefSchema,
   color: colorSchema.optional(),
+  __type: z.literal('account').default('account'),
 })
 
-export type OpenRouterAccount = z.infer<typeof openrouterAccountSchema>
+export const openrouterOptionsSchema = z.object({
+  cache: z.boolean().default(true),
+  __type: z.literal('options').default('options'),
+})

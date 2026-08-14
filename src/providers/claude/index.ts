@@ -3,10 +3,15 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
-import type { BaseProvider } from '../../core/provider'
-import type { ProviderResult, UsageResource } from '../../core/usage'
-import { expandHome, shortenHome } from '../../utils/path'
-import { claudeAccountSchema, type ClaudeAccount } from './config'
+import type {
+  AccountSubscriptionBalanceUsage,
+  AccountSubscriptionConsumptionUsage,
+  AccountUsageResult,
+  ProviderAccount,
+  ProviderOptions,
+} from '../../core/types'
+import { expandHome } from '../../utils/path'
+import { claudeAccountSchema } from './config'
 import {
   ITEM_NOT_FOUND_EXIT_CODE,
   KEYCHAIN_SERVICE,
@@ -68,25 +73,15 @@ type AuthState = {
   oauth: Oauth
   source: CredentialSource
 }
+type UsageResource =
+  AccountSubscriptionBalanceUsage | AccountSubscriptionConsumptionUsage
 
-export class ClaudeProvider implements BaseProvider {
-  private readonly account: ClaudeAccount
+class ClaudeProvider {
+  private readonly account: z.infer<typeof claudeAccountSchema>
 
   constructor(account: unknown) {
     const parsed = claudeAccountSchema.parse(account)
     this.account = { ...parsed, configDir: expandHome(parsed.configDir) }
-  }
-
-  get accountKey() {
-    return path.resolve(this.account.configDir)
-  }
-
-  get name() {
-    return this.account.name
-  }
-
-  get accountColor() {
-    return this.account.color
   }
 
   private readFromKeychain(): {
@@ -291,7 +286,7 @@ export class ClaudeProvider implements BaseProvider {
     return `rate limited by anthropic, retry in ~${String(minutes)}m`
   }
 
-  async fetchUsage(): Promise<ProviderResult> {
+  async fetchUsage(): Promise<AccountUsageResult> {
     const state = this.loadAuth(this.account.configDir)
 
     let accessToken = state.oauth.accessToken ?? ''
@@ -332,11 +327,10 @@ export class ClaudeProvider implements BaseProvider {
       state.oauth.subscriptionType,
       state.oauth.rateLimitTier
     )
-    if (plan !== null) result.plan = plan
+    if (plan !== null) result.accountPlan = plan
 
     const label = this.accountLabel(this.account.configDir)
-    if (label !== null) result.label = label
-    if (label === null) result.label = shortenHome(this.account.configDir)
+    if (label !== null) result.accountInfo = label
 
     return result
   }
@@ -414,7 +408,7 @@ export class ClaudeProvider implements BaseProvider {
     }
   }
 
-  private mapUsage(body: z.infer<typeof usageSchema>): ProviderResult {
+  private mapUsage(body: z.infer<typeof usageSchema>): AccountUsageResult {
     const usage: Record<string, UsageResource> = {}
 
     this.assignWindow(usage, 'session', body.five_hour)
@@ -449,7 +443,11 @@ export class ClaudeProvider implements BaseProvider {
       }
     }
 
-    return { usage }
+    return {
+      provider: 'claude',
+      color: this.account.color ?? '#d97757',
+      usage,
+    }
   }
 
   private formatPlan(
@@ -506,5 +504,21 @@ export class ClaudeProvider implements BaseProvider {
     }
 
     return null
+  }
+}
+
+export async function fetchClaudeAccount(
+  account: ProviderAccount,
+  _options: ProviderOptions
+): Promise<AccountUsageResult> {
+  const parsed = claudeAccountSchema.parse(account)
+  try {
+    return await new ClaudeProvider(parsed).fetchUsage()
+  } catch (error) {
+    return {
+      provider: 'claude',
+      color: parsed.color ?? '#d97757',
+      error: error instanceof Error ? error.message : String(error),
+    }
   }
 }

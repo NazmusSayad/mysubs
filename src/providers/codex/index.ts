@@ -2,10 +2,15 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
-import type { BaseProvider } from '../../core/provider'
-import type { ProviderResult, UsageResource } from '../../core/usage'
-import { expandHome, shortenHome } from '../../utils/path'
-import { codexAccountSchema, type CodexAccount } from './config'
+import type {
+  AccountSubscriptionBalanceUsage,
+  AccountSubscriptionConsumptionUsage,
+  AccountUsageResult,
+  ProviderAccount,
+  ProviderOptions,
+} from '../../core/types'
+import { expandHome } from '../../utils/path'
+import { codexAccountSchema } from './config'
 
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann'
 const TOKEN_URL = 'https://auth.openai.com/oauth/token'
@@ -73,25 +78,15 @@ type Candidate = {
   usedPercent: number | null
   slot: 'session' | 'weekly'
 }
+type UsageResource =
+  AccountSubscriptionBalanceUsage | AccountSubscriptionConsumptionUsage
 
-export class CodexProvider implements BaseProvider {
-  private readonly account: CodexAccount
+class CodexProvider {
+  private readonly account: z.infer<typeof codexAccountSchema>
 
   constructor(account: unknown) {
     const parsed = codexAccountSchema.parse(account)
     this.account = { ...parsed, configDir: expandHome(parsed.configDir) }
-  }
-
-  get accountKey() {
-    return path.resolve(this.account.configDir)
-  }
-
-  get name() {
-    return this.account.name
-  }
-
-  get accountColor() {
-    return this.account.color
   }
 
   private readAuthText(configDir: string): {
@@ -362,7 +357,7 @@ export class CodexProvider implements BaseProvider {
     return String(error)
   }
 
-  async fetchUsage(): Promise<ProviderResult> {
+  async fetchUsage(): Promise<AccountUsageResult> {
     const state = this.loadAuth(this.account.configDir)
 
     let accessToken = state.auth.tokens?.access_token ?? ''
@@ -418,8 +413,7 @@ export class CodexProvider implements BaseProvider {
     const result = this.mapUsage(parsed.data, response)
 
     const name = this.jwtName(state.auth.tokens?.id_token)
-    if (name !== null) result.label = name
-    if (name === null) result.label = shortenHome(this.account.configDir)
+    if (name !== null) result.accountInfo = name
 
     return result
   }
@@ -532,10 +526,7 @@ export class CodexProvider implements BaseProvider {
     }
   }
 
-  private mapUsage(
-    body: z.infer<typeof usageSchema>,
-    response: Response
-  ): ProviderResult {
+  private mapUsage(body: z.infer<typeof usageSchema>, response: Response) {
     const usage: Record<string, UsageResource> = {}
 
     this.assignWindows(
@@ -581,10 +572,14 @@ export class CodexProvider implements BaseProvider {
       }
     }
 
-    const result: ProviderResult = { usage }
+    const result: AccountUsageResult = {
+      provider: 'codex',
+      color: this.account.color ?? '#72317b',
+      usage,
+    }
 
     const plan = this.formatPlan(body.plan_type)
-    if (plan !== null) result.plan = plan
+    if (plan !== null) result.accountPlan = plan
 
     return result
   }
@@ -634,5 +629,21 @@ export class CodexProvider implements BaseProvider {
       .split('_')
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join(' ')
+  }
+}
+
+export async function fetchCodexAccount(
+  account: ProviderAccount,
+  _options: ProviderOptions
+): Promise<AccountUsageResult> {
+  const parsed = codexAccountSchema.parse(account)
+  try {
+    return await new CodexProvider(parsed).fetchUsage()
+  } catch (error) {
+    return {
+      provider: 'codex',
+      color: parsed.color ?? '#72317b',
+      error: error instanceof Error ? error.message : String(error),
+    }
   }
 }

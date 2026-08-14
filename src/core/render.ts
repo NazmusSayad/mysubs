@@ -1,8 +1,13 @@
 import { Chalk, type ChalkInstance } from 'chalk'
-import { generateColor } from '../utils/color'
 import { formatDuration, formatMoney, formatPercent } from '../utils/format'
-import type { Report, Subscription } from './report'
-import type { UsageResource } from './usage'
+import type {
+  AccountSubscriptionBalanceUsage,
+  AccountSubscriptionConsumptionUsage,
+  AccountUsageResult,
+} from './types'
+
+type UsageResource =
+  AccountSubscriptionBalanceUsage | AccountSubscriptionConsumptionUsage
 
 function createChalk(): ChalkInstance {
   const noColor = process.env.NO_COLOR
@@ -95,7 +100,7 @@ function spendRow(usage: Record<string, UsageResource>): Row | null {
   return { kind: 'text', label: 'spend', text: parts.join('   '), tone: 'dim' }
 }
 
-function rowsFor(subscription: Subscription): Row[] {
+function rowsFor(subscription: AccountUsageResult): Row[] {
   if (subscription.error !== undefined) {
     return [
       { kind: 'text', label: 'error', text: subscription.error, tone: 'error' },
@@ -160,28 +165,18 @@ function rowsFor(subscription: Subscription): Row[] {
   return rows
 }
 
-function blocksFor(report: Report): Block[] {
-  const seen = new Set<string>()
-
-  return report.subscriptions.map((subscription) => {
-    const first = !seen.has(subscription.provider)
-    seen.add(subscription.provider)
-
-    let color = subscription.color
-    if (color === undefined && first) {
-      color = generateColor(subscription.provider)
-    }
-    if (color === undefined) {
-      color = generateColor(`${subscription.provider}:${subscription.account}`)
-    }
-
+function blocksFor(results: AccountUsageResult[]): Block[] {
+  return results.map((subscription) => {
     return {
       provider: subscription.provider,
-      name: subscription.account,
-      named: subscription.named,
-      label: subscription.label ?? null,
-      plan: subscription.plan ?? null,
-      color,
+      name:
+        subscription.sourceName ??
+        subscription.accountInfo ??
+        subscription.provider,
+      named: subscription.sourceName !== undefined,
+      label: subscription.accountInfo ?? null,
+      plan: subscription.accountPlan ?? null,
+      color: subscription.color,
       rows: rowsFor(subscription),
     }
   })
@@ -198,8 +193,8 @@ function drawBar(row: Row, width: number, color: string): string {
   )
 }
 
-export function render(report: Report): string {
-  const blocks = blocksFor(report)
+export function render(results: AccountUsageResult[]): string {
+  const blocks = blocksFor(results)
   if (blocks.length === 0) return ''
 
   const rows = blocks.flatMap((block) => block.rows)
@@ -229,9 +224,8 @@ export function render(report: Report): string {
     const heading = block.provider !== provider
     if (heading) {
       provider = block.provider
-      const color = generateColor(block.provider)
       lines.push('')
-      lines.push(pad + chalk.bold.hex(color)(block.provider))
+      lines.push(pad + chalk.bold.hex(block.color)(block.provider))
     }
 
     if (!heading) lines.push('')

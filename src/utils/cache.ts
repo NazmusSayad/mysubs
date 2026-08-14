@@ -2,8 +2,50 @@ import ms, { type StringValue } from 'ms'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { z } from 'zod'
+import type { AccountUsageResult } from '../core/types'
 
-type CacheEntry = { fetchedAt: number; usage: unknown }
+const usageResourceSchema = z.discriminatedUnion('kind', [
+  z
+    .object({
+      kind: z.literal('consumption'),
+      unit: z.union([z.literal('percent'), z.literal('usd')]),
+      used: z.number(),
+      limit: z.number().optional(),
+      remaining: z.number().optional(),
+      utilization: z.number().optional(),
+      resetsAt: z.string().optional(),
+      windowSeconds: z.number().optional(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('balance'),
+      unit: z.union([z.literal('usd'), z.literal('credits')]),
+      available: z.number(),
+    })
+    .strict(),
+])
+const accountUsageResultSchema = z
+  .object({
+    provider: z.string(),
+    color: z.string(),
+    sourceName: z.string().optional(),
+    sourceType: z.literal('manual').optional(),
+    accountInfo: z.string().optional(),
+    accountPlan: z.string().optional(),
+    error: z.string().optional(),
+    usage: z.record(z.string(), usageResourceSchema).optional(),
+  })
+  .strict()
+const cacheEntrySchema = z
+  .object({
+    expiresAt: z.int().gte(0),
+    value: accountUsageResultSchema,
+  })
+  .strict()
+const cacheKeySchema = z.string().regex(/^[a-f0-9]{64}$/)
+const cacheRootSchema = z.record(z.string(), z.unknown())
 
 export function cachePath(): string {
   const xdg = process.env.XDG_CACHE_HOME
@@ -28,35 +70,53 @@ export function parseTTL(value: number | string): number {
   return parsed
 }
 
-function readAll(): Record<string, CacheEntry> {
+function readAll(): Record<
+  string,
+  { expiresAt: number; value: AccountUsageResult }
+> {
+  let raw: unknown
   try {
-    const parsed: unknown = JSON.parse(fs.readFileSync(cachePath(), 'utf8'))
-    if (
-      typeof parsed !== 'object' ||
-      parsed === null ||
-      Array.isArray(parsed)
-    ) {
-      return {}
-    }
-    return parsed as Record<string, CacheEntry>
+    raw = JSON.parse(fs.readFileSync(cachePath(), 'utf8'))
   } catch {
     return {}
   }
+
+  const parsed = cacheRootSchema.safeParse(raw)
+  if (!parsed.success) return {}
+
+  const entries: Record<string, { expiresAt: number; value: AccountUsageResult }> =
+    {}
+  for (const [key, value] of Object.entries(parsed.data)) {
+    if (!cacheKeySchema.safeParse(key).success) continue
+    const entry = cacheEntrySchema.safeParse(value)
+    if (!entry.success) continue
+    entries[key] = entry.data
+  }
+  return entries
 }
 
-export function readCache(key: string, ttlMs: number): unknown {
+export function readCache(
+  key: string,
+  provider: string
+): AccountUsageResult | null {
   const entry = readAll()[key]
   if (entry === undefined) return null
-  if (typeof entry.fetchedAt !== 'number') return null
-  if (Date.now() - entry.fetchedAt >= ttlMs) return null
-  return entry.usage
+  if (entry.expiresAt <= Date.now()) return null
+  if (entry.value.provider !== provider) return null
+  return entry.value
 }
 
-export function writeCache(key: string, usage: unknown): void {
-  const all = readAll()
-  all[key] = { fetchedAt: Date.now(), usage }
+export function writeCache(
+  key: string,
+  expiresAt: number,
+  value: AccountUsageResult
+): void {
+  const entries = readAll()
+  entries[key] = { expiresAt, value }
 
   const target = cachePath()
   fs.mkdirSync(path.dirname(target), { recursive: true })
-  fs.writeFileSync(target, JSON.stringify(all, null, 2))
+  const temporary = `${target}.${process.pid}.tmp`
+  fs.writeFileSync(temporary, JSON.stringify(entries, null, 2), { mode: 0o600 })
+  fs.renameSync(temporary, target)
 }
