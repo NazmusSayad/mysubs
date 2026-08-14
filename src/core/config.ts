@@ -10,6 +10,7 @@ export const configSchema = z
     cacheTTL: z.union([z.number(), z.string()]).default('1m'),
     detect: z.boolean().default(true),
     contrast: z.number().min(0).max(1).default(0.4),
+    nerdFont: z.boolean().default(false),
   })
   .passthrough()
 const providerConfigSchema = z
@@ -28,6 +29,7 @@ export type Config = {
   cacheTTL: number | string
   detect: boolean
   contrast: number
+  nerdFont: boolean
   accounts: Record<string, ProviderAccount[]>
   options: Record<string, ProviderOptions>
 }
@@ -75,6 +77,7 @@ export function loadConfig(): Config {
     cacheTTL: parsed.data.cacheTTL,
     detect: parsed.data.detect,
     contrast: parsed.data.contrast,
+    nerdFont: parsed.data.nerdFont,
     accounts,
     options,
   }
