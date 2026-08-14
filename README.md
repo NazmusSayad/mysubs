@@ -36,6 +36,12 @@ Example:
   },
   "openrouter": {
     "accounts": [{ "name": "main", "apiKey": "env:OPENROUTER_API_KEY" }]
+  },
+  "opencode": {
+    "accounts": [
+      { "name": "go", "product": "go", "apiKey": "env:OPENCODE_API_KEY" },
+      { "name": "zen", "product": "zen", "cookie": "key:opencode-zen" }
+    ]
   }
 }
 ```
@@ -52,3 +58,6 @@ at run time:
 mysubs key set openrouter   # prompts for the secret, stores it in the keyring
 mysubs key get openrouter   # prints the stored secret
 ```
+
+OpenCode Go uses an API key. Zen usage requires an authenticated `Cookie` header
+from `opencode.ai`; optionally set `workspaceID` to select a specific workspace.
