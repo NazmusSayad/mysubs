@@ -6,6 +6,7 @@ import type { UsageResource } from './utils/usage'
 
 const PROVIDER_TITLES: Record<string, string> = {
   codex: 'Codex',
+  claude: 'Claude',
   openrouter: 'OpenRouter',
 }
 

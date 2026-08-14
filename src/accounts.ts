@@ -1,5 +1,7 @@
 import path from 'node:path'
 import type { Config } from './config'
+import type { ClaudeAccount } from './providers/claude/config'
+import { detectClaudeAccounts } from './providers/claude/detect'
 import type { CodexAccount } from './providers/codex/config'
 import { detectCodexAccounts } from './providers/codex/detect'
 import type { OpenRouterAccount } from './providers/openrouter/config'
@@ -15,6 +17,14 @@ export type ResolvedAccount =
       color?: string
       source: 'config' | 'detected'
       account: CodexAccount
+    }
+  | {
+      provider: 'claude'
+      name: string
+      named: boolean
+      color?: string
+      source: 'config' | 'detected'
+      account: ClaudeAccount
     }
   | {
       provider: 'openrouter'
@@ -64,6 +74,41 @@ export function resolveAccounts(config: Config): ResolvedAccount[] {
       codexNames.add(name)
       resolved.push({
         provider: 'codex',
+        name,
+        named: account.name !== undefined,
+        source: 'detected',
+        account,
+      })
+    }
+  }
+
+  const claude = config.claude?.accounts ?? []
+  const claudeNames = new Set<string>()
+
+  for (const account of claude) {
+    const name = assignName(account.name, claudeNames)
+    claudeNames.add(name)
+    resolved.push({
+      provider: 'claude',
+      name,
+      named: account.name !== undefined,
+      color: account.color,
+      source: 'config',
+      account,
+    })
+  }
+
+  if (config.detect) {
+    const dirs = new Set(
+      claude.map((account) => path.resolve(account.configDir))
+    )
+
+    for (const account of detectClaudeAccounts()) {
+      if (dirs.has(path.resolve(account.configDir))) continue
+      const name = assignName(account.name, claudeNames)
+      claudeNames.add(name)
+      resolved.push({
+        provider: 'claude',
         name,
         named: account.name !== undefined,
         source: 'detected',

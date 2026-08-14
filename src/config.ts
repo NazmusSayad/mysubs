@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
+import { claudeConfigSchema } from './providers/claude/config'
 import { codexConfigSchema } from './providers/codex/config'
 import { openrouterConfigSchema } from './providers/openrouter/config'
 import { expandHome } from './utils/path'
@@ -10,6 +11,7 @@ export const configSchema = z.object({
   cacheTTL: z.union([z.number(), z.string()]).default('5m'),
   detect: z.boolean().default(true),
   codex: codexConfigSchema.optional(),
+  claude: claudeConfigSchema.optional(),
   openrouter: openrouterConfigSchema.optional(),
 })
 
@@ -47,6 +49,13 @@ export function loadConfig(): Config {
   const config = parsed.data
   if (config.codex !== undefined) {
     config.codex.accounts = config.codex.accounts.map((account) => ({
+      ...account,
+      configDir: expandHome(account.configDir),
+    }))
+  }
+
+  if (config.claude !== undefined) {
+    config.claude.accounts = config.claude.accounts.map((account) => ({
       ...account,
       configDir: expandHome(account.configDir),
     }))

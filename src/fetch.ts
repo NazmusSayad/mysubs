@@ -1,5 +1,6 @@
 import type { ResolvedAccount } from './accounts'
 import type { Config } from './config'
+import { fetchClaudeUsage } from './providers/claude'
 import { fetchCodexUsage } from './providers/codex'
 import { fetchOpenRouterUsage } from './providers/openrouter'
 import { parseTTL, readCache, writeCache } from './utils/cache'
@@ -8,6 +9,7 @@ import type { ProviderResult } from './utils/usage'
 
 function run(target: ResolvedAccount): Promise<ProviderResult> {
   if (target.provider === 'codex') return fetchCodexUsage(target.account)
+  if (target.provider === 'claude') return fetchClaudeUsage(target.account)
   if (target.provider === 'openrouter') {
     return fetchOpenRouterUsage(target.account)
   }

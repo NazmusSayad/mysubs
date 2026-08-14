@@ -6,6 +6,7 @@ export const colorSchema = z
 
 export const BRAND_COLORS: Record<string, string> = {
   codex: '#72317b',
+  claude: '#d97757',
   openrouter: '#6467f2',
 }
 

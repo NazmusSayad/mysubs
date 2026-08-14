@@ -107,6 +107,7 @@ async function runUsage(options: {
       `no accounts configured and none detected.\n\ncreate ${configPath()}:\n\n${JSON.stringify(
         {
           codex: { accounts: [{ name: 'personal', configDir: '~/.codex' }] },
+          claude: { accounts: [{ name: 'personal', configDir: '~/.claude' }] },
           openrouter: {
             accounts: [{ name: 'personal', apiKey: 'env:OPENROUTER_API_KEY' }],
           },
