@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { providerBaseOptions } from '../../core/schema'
 import { secretRefSchema } from '../../lib/secret'
 
 const commonAccountSchema = {
@@ -20,7 +21,4 @@ export const opencodeAccountSchema = z.discriminatedUnion('product', [
   }),
 ])
 
-export const opencodeOptionsSchema = z.object({
-  cache: z.boolean().default(true),
-  __type: z.literal('options').default('options'),
-})
+export const opencodeOptionsSchema = providerBaseOptions.extend({})

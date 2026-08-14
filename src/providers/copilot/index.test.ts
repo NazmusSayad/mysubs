@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fetchCopilotAccount } from '.'
 import type { ProviderAccount, ProviderOptions } from '../../core/types'
 
-const options: ProviderOptions = { cache: true, __type: 'options' }
+const options: ProviderOptions = {
+  cache: true,
+  detect: true,
+  __type: 'options',
+}
 const account: ProviderAccount = {
   source: 'token',
   token: 'env:COPILOT_TEST_TOKEN',

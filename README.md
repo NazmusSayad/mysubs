@@ -33,6 +33,7 @@ Example:
   "nerdFont": true,
   "maxWidth": 120,
   "codex": {
+    "detect": false,
     "accounts": [{ "name": "work", "configDir": "~/.config/codex" }]
   },
   "claude": {
@@ -55,6 +56,10 @@ Example:
   }
 }
 ```
+
+Set `detect` inside an individual provider to `false` to skip automatic account
+detection for that provider. The root `detect` setting still disables detection
+for every provider.
 
 ## Secrets
 

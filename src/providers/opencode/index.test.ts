@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fetchOpenCodeAccount } from '.'
 import type { ProviderAccount, ProviderOptions } from '../../core/types'
 
-const options: ProviderOptions = { cache: true, __type: 'options' }
+const options: ProviderOptions = {
+  cache: true,
+  detect: true,
+  __type: 'options',
+}
 
 afterEach(() => {
   vi.unstubAllEnvs()

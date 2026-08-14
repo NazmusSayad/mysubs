@@ -1,5 +1,11 @@
 import { z } from 'zod'
 
+export const providerBaseOptions = z.object({
+  cache: z.boolean().default(true),
+  detect: z.boolean().default(true),
+  __type: z.literal('options').default('options'),
+})
+
 export const usageResourceSchema = z.discriminatedUnion('kind', [
   z.strictObject({
     kind: z.literal('consumption'),

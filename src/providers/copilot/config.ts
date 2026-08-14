@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { providerBaseOptions } from '../../core/schema'
 import { secretRefSchema } from '../../lib/secret'
 
 const commonAccountSchema = {
@@ -18,7 +19,4 @@ export const copilotAccountSchema = z.discriminatedUnion('source', [
   }),
 ])
 
-export const copilotOptionsSchema = z.object({
-  cache: z.boolean().default(true),
-  __type: z.literal('options').default('options'),
-})
+export const copilotOptionsSchema = providerBaseOptions.extend({})

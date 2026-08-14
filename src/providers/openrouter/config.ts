@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { providerBaseOptions } from '../../core/schema'
 import { secretRefSchema } from '../../lib/secret'
 
 export const openrouterAccountSchema = z.object({
@@ -7,7 +8,4 @@ export const openrouterAccountSchema = z.object({
   __type: z.literal('account').default('account'),
 })
 
-export const openrouterOptionsSchema = z.object({
-  cache: z.boolean().default(true),
-  __type: z.literal('options').default('options'),
-})
+export const openrouterOptionsSchema = providerBaseOptions.extend({})

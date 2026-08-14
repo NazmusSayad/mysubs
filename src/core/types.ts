@@ -2,6 +2,11 @@
 
 import { Prettify } from 'daily-code'
 import type { z } from 'zod'
+import type {
+  accountUsageResultSchema,
+  providerBaseOptions,
+  usageResourceSchema,
+} from './schema'
 
 export type ProviderAccount = Prettify<
   Record<string, unknown> & {
@@ -10,45 +15,22 @@ export type ProviderAccount = Prettify<
 >
 
 export type ProviderOptions = Prettify<
-  Record<string, unknown> & {
-    cache: boolean
-    __type: 'options'
-  }
+  Record<string, unknown> & z.infer<typeof providerBaseOptions>
 >
 
-export type AccountSubscriptionConsumptionUsage = {
-  kind: 'consumption'
-  unit: 'percent' | 'usd'
-  used: number
-  limit?: number
-  remaining?: number
-  utilization?: number
-  resetsAt?: string
-  windowSeconds?: number
-}
+export type AccountSubscriptionConsumptionUsage = Extract<
+  z.infer<typeof usageResourceSchema>,
+  { kind: 'consumption' }
+>
 
-export type AccountSubscriptionBalanceUsage = {
-  kind: 'balance'
-  unit: 'usd' | 'credits'
-  available: number
-}
+export type AccountSubscriptionBalanceUsage = Extract<
+  z.infer<typeof usageResourceSchema>,
+  { kind: 'balance' }
+>
 
-export type AccountUsageResult = {
-  provider: string
-  cached: boolean
-
-  sourceName?: string
-  sourceType?: 'manual'
-
-  accountInfo?: string
-  accountPlan?: string
-
-  error?: string
-  usage?: Record<
-    string,
-    AccountSubscriptionConsumptionUsage | AccountSubscriptionBalanceUsage
-  >
-}
+export type AccountUsageResult = Prettify<
+  z.infer<typeof accountUsageResultSchema>
+>
 
 export type ProviderEntry = {
   name: string
