@@ -23,6 +23,9 @@ const PADDING = 1
 const ROW_INDENT = 2
 const GAP = 2
 const MIN_BAR_WIDTH = 10
+const SMALLEST_BLOCK = '▏'
+const PARTIAL_BLOCKS = ['▏', '▎', '▍', '▌', '▋', '▊', '▉']
+const TRACK_COLOR = '#3f434d'
 
 type Row =
   | {
@@ -160,12 +163,35 @@ function rowsFor(subscription: AccountUsageResult): Row[] {
 function drawBar(row: Row, width: number, contrast: number): string {
   if (row.kind !== 'bar') return ''
 
-  let fill = Math.round(Math.min(1, Math.max(0, row.ratio)) * width)
-  if (fill === 0 && row.remaining > 0) fill = 1
+  const color = usageColor(row.ratio, contrast)
+  const exact = Math.min(1, Math.max(0, row.ratio)) * width
+  const full = Math.min(width, Math.floor(exact))
+  const eighths = Math.floor((exact - full) * 8)
+
+  if (full >= width) return chalk.hex(color)('█'.repeat(width))
+
+  if (eighths > 0) {
+    const partial = PARTIAL_BLOCKS[eighths - 1]
+    if (partial === undefined) {
+      throw new Error(`invalid bar fraction: ${eighths}`)
+    }
+    return (
+      chalk.hex(color)('█'.repeat(full)) +
+      chalk.hex(color).bgHex(TRACK_COLOR)(partial) +
+      chalk.hex(TRACK_COLOR)('█'.repeat(width - full - 1))
+    )
+  }
+
+  if (full === 0 && row.remaining > 0) {
+    return (
+      chalk.hex(color).bgHex(TRACK_COLOR)(SMALLEST_BLOCK) +
+      chalk.hex(TRACK_COLOR)('█'.repeat(width - 1))
+    )
+  }
 
   return (
-    chalk.hex(usageColor(row.ratio, contrast))('█'.repeat(fill)) +
-    chalk.dim('░'.repeat(width - fill))
+    chalk.hex(color)('█'.repeat(full)) +
+    chalk.hex(TRACK_COLOR)('█'.repeat(width - full))
   )
 }
 
