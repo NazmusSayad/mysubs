@@ -23,7 +23,6 @@ const LAST_REFRESH_MAX_AGE_MS = 8 * 24 * 60 * 60 * 1000
 const SESSION_WINDOW_SECONDS = 18000
 const WEEKLY_WINDOW_SECONDS = 604800
 const CREDIT_USD_RATE = 0.04
-const DEFAULT_COLOR = '#72317b'
 
 const authSchema = z.object({
   auth_mode: z.string().nullish(),
@@ -403,7 +402,7 @@ async function fetchUsage(
     throw new Error('codex usage response was not in the expected shape')
   }
 
-  const result = mapUsage(parsed.data, response, account)
+  const result = mapUsage(parsed.data, response)
 
   const name = jwtName(state.auth.tokens?.id_token)
   if (name !== null) result.accountInfo = name
@@ -513,11 +512,7 @@ function assignWindows(
   }
 }
 
-function mapUsage(
-  body: z.infer<typeof usageSchema>,
-  response: Response,
-  account: z.infer<typeof codexAccountSchema>
-) {
+function mapUsage(body: z.infer<typeof usageSchema>, response: Response) {
   const usage: Record<string, UsageResource> = {}
 
   assignWindows(
@@ -563,7 +558,6 @@ function mapUsage(
   const result: AccountUsageResult = {
     provider: 'codex',
     cached: false,
-    color: account.color ?? DEFAULT_COLOR,
     usage,
   }
 
@@ -633,7 +627,6 @@ export async function fetchCodexAccount(
     return {
       provider: 'codex',
       cached: false,
-      color: typeof account.color === 'string' ? account.color : DEFAULT_COLOR,
       error: error instanceof Error ? error.message : String(error),
     }
   }

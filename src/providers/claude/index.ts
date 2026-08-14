@@ -29,7 +29,6 @@ const BETA_HEADER = 'oauth-2025-04-20'
 const USER_AGENT = 'claude-code/2.1.69'
 const REFRESH_WINDOW_MS = 5 * 60 * 1000
 const CENTS_PER_USD = 100
-const DEFAULT_COLOR = '#d97757'
 
 const oauthSchema = z.object({
   accessToken: z.string().nullish(),
@@ -316,7 +315,7 @@ async function fetchUsage(
     throw new Error('claude usage response was not in the expected shape')
   }
 
-  const result = mapUsage(parsed.data, account.color)
+  const result = mapUsage(parsed.data)
 
   const plan = formatPlan(
     state.oauth.subscriptionType,
@@ -403,10 +402,7 @@ function assignScopedLimits(
   }
 }
 
-function mapUsage(
-  body: z.infer<typeof usageSchema>,
-  color: string | undefined
-): AccountUsageResult {
+function mapUsage(body: z.infer<typeof usageSchema>): AccountUsageResult {
   const usage: Record<string, UsageResource> = {}
 
   assignWindow(usage, 'session', body.five_hour)
@@ -444,7 +440,6 @@ function mapUsage(
   return {
     provider: 'claude',
     cached: false,
-    color: color ?? DEFAULT_COLOR,
     usage,
   }
 }
@@ -518,7 +513,6 @@ export async function fetchClaudeAccount(
     return {
       provider: 'claude',
       cached: false,
-      color: typeof account.color === 'string' ? account.color : DEFAULT_COLOR,
       error: error instanceof Error ? error.message : String(error),
     }
   }

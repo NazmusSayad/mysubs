@@ -11,6 +11,7 @@ import { render } from './render'
 import type { AccountUsageResult } from './types'
 
 const originalColumns = process.stdout.columns
+const CONTRAST = 0.4
 
 beforeAll(() => {
   Object.defineProperty(process.stdout, 'columns', {
@@ -40,7 +41,6 @@ function freezeClock(): void {
 const codexResult: AccountUsageResult = {
   provider: 'codex',
   cached: true,
-  color: '#72317b',
   accountInfo: 'Theo Bennett',
   accountPlan: 'Plus',
   usage: {
@@ -62,7 +62,6 @@ const codexResult: AccountUsageResult = {
 const openrouterResult: AccountUsageResult = {
   provider: 'openrouter',
   cached: false,
-  color: '#6467f2',
   accountInfo: 'primary key',
   accountPlan: 'Pay as you go',
   usage: {
@@ -93,7 +92,6 @@ function claudeAccount(sourceName: string, used: number): AccountUsageResult {
   return {
     provider: 'claude',
     cached: false,
-    color: '#d97757',
     sourceName,
     accountInfo: 'WebMakker',
     accountPlan: 'Pro',
@@ -113,30 +111,28 @@ function claudeAccount(sourceName: string, used: number): AccountUsageResult {
 
 describe('render', () => {
   it('returns an empty string for no results', () => {
-    expect(render([])).toBe('')
+    expect(render([], CONTRAST)).toBe('')
   })
 
   it('renders a consumption bar, reset detail and credit substitution', () => {
     freezeClock()
-    expect(render([codexResult])).toMatchInlineSnapshot(`
+    expect(render([codexResult], CONTRAST)).toMatchInlineSnapshot(`
       "
-       codex
-         Theo Bennett · Plus ♲ cached
-           weekly   ███████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  20%  6d 0h
-           credits  $0.00
+       Codex > Theo Bennett · Plus                                                               ♲ cached
+         weekly   ███████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  20%  6d 0h
+         credits  $0.00
       "
     `)
   })
 
   it('renders balances, a usd bar with remaining, and the spend summary', () => {
     freezeClock()
-    expect(render([openrouterResult])).toMatchInlineSnapshot(`
+    expect(render([openrouterResult], CONTRAST)).toMatchInlineSnapshot(`
       "
-       openrouter
-         primary key · Pay as you go
-           credits      ██████████████████████████████████████████████████░░░░░░░░░░░░░  79%  $13.65 left
-           daily limit  ██░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   4%  $0.96 left
-           spend        today $0.04   week $0.28   month $0.44
+       OpenRouter > primary key · Pay as you go
+         credits      ███████████████████████████████████████████████████░░░░░░░░░░░░░░  79%  $13.65 left
+         daily limit  ███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   4%  $0.96 left
+         spend        today $0.04   week $0.28   month $0.44
       "
     `)
   })
@@ -144,86 +140,60 @@ describe('render', () => {
   it('renders an error row instead of usage', () => {
     freezeClock()
     expect(
-      render([
-        {
-          provider: 'claude',
-          cached: false,
-          color: '#d97757',
-          error: 'session expired, run `claude` to log in again',
-        },
-      ])
+      render(
+        [
+          {
+            provider: 'claude',
+            cached: false,
+            error: 'session expired, run `claude` to log in again',
+          },
+        ],
+        CONTRAST
+      )
     ).toMatchInlineSnapshot(`
       "
-       claude
-         claude
-           error  session expired, run \`claude\` to log in again
+       Claude
+         error  session expired, run \`claude\` to log in again
       "
     `)
   })
 
   it('renders a placeholder when there is no usage data', () => {
     freezeClock()
-    expect(
-      render([
-        { provider: 'codex', cached: false, color: '#72317b', usage: {} },
-      ])
-    ).toMatchInlineSnapshot(`
+    expect(render([{ provider: 'codex', cached: false, usage: {} }], CONTRAST))
+      .toMatchInlineSnapshot(`
       "
-       codex
-         codex
-             no usage data
+       Codex
+           no usage data
       "
     `)
   })
 
-  it('prints one provider heading for several accounts in a single call', () => {
+  it('gives every account its own provider header', () => {
     freezeClock()
-    const output = render([
-      claudeAccount('work', 40),
-      claudeAccount('home', 12),
-    ])
+    const output = render(
+      [claudeAccount('work', 40), claudeAccount('home', 12)],
+      CONTRAST
+    )
     expect(
-      output.split('\n').filter((line) => line.trim() === 'claude')
-    ).toHaveLength(1)
+      output.split('\n').filter((line) => line.startsWith(' Claude '))
+    ).toHaveLength(2)
     expect(output).toMatchInlineSnapshot(`
       "
-       claude
-         work  WebMakker · Pro
-           session  ████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  40%
+       Claude work > WebMakker · Pro
+         session  █████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  40%
 
-         home  WebMakker · Pro
-           session  ██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  12%
+       Claude home > WebMakker · Pro
+         session  ██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  12%
       "
     `)
   })
 
-  it('repeats the provider heading when no previous provider is passed', () => {
+  it('right-aligns the cached marker with the usage rows', () => {
     freezeClock()
-    const combined = [
-      render([claudeAccount('work', 40)]),
-      render([claudeAccount('home', 12)]),
-    ].join('\n')
-    expect(
-      combined.split('\n').filter((line) => line.trim() === 'claude')
-    ).toHaveLength(2)
-  })
-
-  it('prints one heading when the previous provider is carried between calls', () => {
-    freezeClock()
-    const combined = [
-      render([claudeAccount('work', 40)], null),
-      render([claudeAccount('home', 12)], 'claude'),
-    ].join('\n')
-    expect(
-      combined.split('\n').filter((line) => line.trim() === 'claude')
-    ).toHaveLength(1)
-  })
-
-  it('still prints a heading when the previous provider differs', () => {
-    freezeClock()
-    const output = render([claudeAccount('work', 40)], 'codex')
-    expect(
-      output.split('\n').filter((line) => line.trim() === 'claude')
-    ).toHaveLength(1)
+    const lines = render([codexResult], CONTRAST).split('\n')
+    const header = lines.find((line) => line.startsWith(' Codex '))
+    const bar = lines.find((line) => line.includes('█'))
+    expect(header?.length).toBe(bar?.length)
   })
 })

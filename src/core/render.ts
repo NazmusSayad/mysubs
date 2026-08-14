@@ -1,4 +1,6 @@
 import { Chalk, type ChalkInstance } from 'chalk'
+import { usageColor } from '../lib/color'
+import { providers } from '../providers'
 import { formatDuration, formatMoney, formatPercent } from '../utils/format'
 import type {
   AccountSubscriptionBalanceUsage,
@@ -18,8 +20,7 @@ function createChalk(): ChalkInstance {
 const chalk = createChalk()
 
 const PADDING = 1
-const ACCOUNT_INDENT = 2
-const ROW_INDENT = 4
+const ROW_INDENT = 2
 const GAP = 2
 const MIN_BAR_WIDTH = 10
 
@@ -155,14 +156,15 @@ function rowsFor(subscription: AccountUsageResult): Row[] {
   return rows
 }
 
-function drawBar(row: Row, width: number, color: string): string {
+function drawBar(row: Row, width: number, contrast: number): string {
   if (row.kind !== 'bar') return ''
 
   let fill = Math.round(Math.min(1, Math.max(0, row.ratio)) * width)
   if (fill === 0 && row.used > 0) fill = 1
 
   return (
-    chalk.hex(color)('█'.repeat(fill)) + chalk.dim('░'.repeat(width - fill))
+    chalk.hex(usageColor(row.ratio, contrast))('█'.repeat(fill)) +
+    chalk.dim('░'.repeat(width - fill))
   )
 }
 
@@ -171,7 +173,7 @@ function drawBar(row: Row, width: number, color: string): string {
 // between accounts; aligning globally would require buffering every account.
 export function render(
   results: AccountUsageResult[],
-  previousProvider: string | null = null
+  contrast: number
 ): string {
   if (results.length === 0) return ''
 
@@ -197,39 +199,36 @@ export function render(
 
   const pad = ' '.repeat(PADDING)
   const lines: string[] = []
-  let provider = previousProvider
 
   for (const { result, rows: resultRows } of rendered) {
-    const heading = result.provider !== provider
-    if (heading) {
-      provider = result.provider
-      lines.push('')
-      lines.push(pad + chalk.bold.hex(result.color)(result.provider))
+    const provider = providers[result.provider]
+    if (provider === undefined) {
+      throw new Error(`unknown provider ${result.provider}`)
     }
 
-    if (!heading) lines.push('')
+    let head = chalk.bold.hex(provider.color)(provider.name)
+    let headWidth = provider.name.length
 
-    const name = result.sourceName ?? result.accountInfo ?? result.provider
-    const label = result.accountInfo ?? ''
-    const plan = result.accountPlan ?? ''
-    const cacheStatus = result.cached ? chalk.dim(' ♲ cached') : ''
-
-    let head: string
-    if (label === '') {
-      head = chalk.hex(result.color)(name)
-    } else if (result.sourceName !== undefined) {
-      head = chalk.hex(result.color)(name) + ' '.repeat(GAP) + chalk.dim(label)
-    } else {
-      head = chalk.hex(result.color)(label)
+    if (result.sourceName !== undefined) {
+      head += ` ${chalk.dim(result.sourceName)}`
+      headWidth += 1 + result.sourceName.length
+    }
+    if (result.accountInfo !== undefined) {
+      head += chalk.dim(' > ') + chalk.hex(provider.color)(result.accountInfo)
+      headWidth += 3 + result.accountInfo.length
+    }
+    if (result.accountPlan !== undefined) {
+      head += chalk.dim(` · ${result.accountPlan}`)
+      headWidth += 3 + result.accountPlan.length
+    }
+    if (result.cached) {
+      const marker = '♲ cached'
+      const spacing = Math.max(GAP, available - headWidth - marker.length)
+      head += ' '.repeat(spacing) + chalk.dim(marker)
     }
 
-    lines.push(
-      pad +
-        ' '.repeat(ACCOUNT_INDENT) +
-        head +
-        (plan === '' ? '' : chalk.dim(` · ${plan}`)) +
-        cacheStatus
-    )
+    lines.push('')
+    lines.push(pad + head)
 
     for (const row of resultRows) {
       const rowLabel = row.label.padEnd(labelWidth)
@@ -242,9 +241,11 @@ export function render(
           prefix +
             rowLabel +
             ' '.repeat(GAP) +
-            drawBar(row, barWidth, result.color) +
+            drawBar(row, barWidth, contrast) +
             ' '.repeat(GAP) +
-            row.value.padStart(valueWidth) +
+            chalk.hex(usageColor(row.ratio, contrast))(
+              row.value.padStart(valueWidth)
+            ) +
             detail
         )
         continue

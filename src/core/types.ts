@@ -36,7 +36,6 @@ export type AccountSubscriptionBalanceUsage = {
 export type AccountUsageResult = {
   provider: string
   cached: boolean
-  color: string
 
   sourceName?: string
   sourceType?: 'manual'
@@ -52,6 +51,8 @@ export type AccountUsageResult = {
 }
 
 export type ProviderEntry = {
+  name: string
+  color: string
   optionsSchema: z.ZodType<ProviderOptions>
   accountSchema: z.ZodType<ProviderAccount>
   detectDefaults: () => Promise<ProviderAccount[]>

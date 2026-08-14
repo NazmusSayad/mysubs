@@ -28,6 +28,7 @@ Example:
 
 ```json
 {
+  "contrast": 0.4,
   "codex": {
     "accounts": [{ "name": "work", "configDir": "~/.config/codex" }]
   },
@@ -45,6 +46,12 @@ Example:
   }
 }
 ```
+
+Usage bars run from green when little is used to red when a limit is nearly spent.
+`contrast` (0 to 1, default `0.4`) controls how strong those colors are: lower is
+calmer, `0` is plain grey, higher is more vivid.
+
+Other top-level options: `cacheTTL` (default `"1m"`) and `detect` (default `true`).
 
 ## Secrets
 

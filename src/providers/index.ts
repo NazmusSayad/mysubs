@@ -19,24 +19,32 @@ import { detectOpenRouterAccounts } from './openrouter/detect'
 
 export const providers: Record<string, ProviderEntry> = {
   codex: {
+    name: 'Codex',
+    color: '#6e5ae6',
     optionsSchema: codexOptionsSchema,
     accountSchema: codexAccountSchema,
     detectDefaults: detectCodexAccounts,
     fetchAccount: fetchCodexAccount,
   },
   claude: {
+    name: 'Claude',
+    color: '#d97757',
     optionsSchema: claudeOptionsSchema,
     accountSchema: claudeAccountSchema,
     detectDefaults: detectClaudeAccounts,
     fetchAccount: fetchClaudeAccount,
   },
   openrouter: {
+    name: 'OpenRouter',
+    color: '#c9ff00',
     optionsSchema: openrouterOptionsSchema,
     accountSchema: openrouterAccountSchema,
     detectDefaults: detectOpenRouterAccounts,
     fetchAccount: fetchOpenRouterAccount,
   },
   opencode: {
+    name: 'OpenCode',
+    color: '#f4b942',
     optionsSchema: opencodeOptionsSchema,
     accountSchema: opencodeAccountSchema,
     detectDefaults: detectOpenCodeAccounts,

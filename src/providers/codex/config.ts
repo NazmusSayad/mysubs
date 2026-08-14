@@ -1,10 +1,8 @@
 import { z } from 'zod'
-import { colorSchema } from '../../lib/color'
 
 export const codexAccountSchema = z.object({
   name: z.string().min(1).optional(),
   configDir: z.string().min(1),
-  color: colorSchema.optional(),
   __type: z.literal('account').default('account'),
 })
 

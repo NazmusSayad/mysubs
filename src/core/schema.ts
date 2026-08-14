@@ -26,7 +26,6 @@ export const accountUsageResultSchema = z
   .object({
     provider: z.string(),
     cached: z.boolean(),
-    color: z.string(),
     sourceName: z.string().optional(),
     sourceType: z.literal('manual').optional(),
     accountInfo: z.string().optional(),

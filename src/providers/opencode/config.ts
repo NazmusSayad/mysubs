@@ -1,10 +1,8 @@
 import { z } from 'zod'
-import { colorSchema } from '../../lib/color'
 import { secretRefSchema } from '../../lib/secret'
 
 const commonAccountSchema = {
   name: z.string().min(1).optional(),
-  color: colorSchema.optional(),
   __type: z.literal('account').default('account'),
 }
 

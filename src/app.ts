@@ -152,7 +152,6 @@ export async function runUsage(options: {
   const showProgress = options.json !== true && process.stderr.isTTY === true
 
   const results: AccountUsageResult[] = []
-  let previousProvider: string | null = null
 
   for (const target of selected) {
     let label = target.provider
@@ -173,9 +172,8 @@ export async function runUsage(options: {
 
       results.push(resolved)
       if (options.json !== true) {
-        process.stdout.write(`${render([resolved], previousProvider)}\n`)
+        process.stdout.write(`${render([resolved], config.contrast)}\n`)
       }
-      previousProvider = resolved.provider
     } finally {
       if (stopProgress !== null) stopProgress()
     }

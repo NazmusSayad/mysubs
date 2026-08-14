@@ -14,7 +14,6 @@ const WORKSPACES_FUNCTION_ID =
   'def39973159c7f0483d8793a822b8dbb10d067e12c65455fcb4608459ba0234f'
 const SUBSCRIPTION_FUNCTION_ID =
   '7abeebee372f304e050aaaf92be863f4a86490e382f8c79db68fd94040d691b4'
-const DEFAULT_COLOR = '#f4b942'
 
 const goUsageSchema = z.object({
   usage: z.object({
@@ -249,14 +248,12 @@ export async function fetchOpenCodeAccount(
     return {
       provider: 'opencode',
       cached: false,
-      color: parsed.color ?? DEFAULT_COLOR,
       usage,
     }
   } catch (error) {
     return {
       provider: 'opencode',
       cached: false,
-      color: typeof account.color === 'string' ? account.color : DEFAULT_COLOR,
       error: error instanceof Error ? error.message : String(error),
     }
   }

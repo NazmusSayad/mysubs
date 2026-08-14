@@ -7,8 +7,9 @@ import type { ProviderAccount, ProviderOptions } from './types'
 
 const configSchema = z
   .object({
-    cacheTTL: z.union([z.number(), z.string()]).default('5m'),
+    cacheTTL: z.union([z.number(), z.string()]).default('1m'),
     detect: z.boolean().default(true),
+    contrast: z.number().min(0).max(1).default(0.4),
   })
   .passthrough()
 const providerConfigSchema = z
@@ -26,6 +27,7 @@ export function configPath(): string {
 export type Config = {
   cacheTTL: number | string
   detect: boolean
+  contrast: number
   accounts: Record<string, ProviderAccount[]>
   options: Record<string, ProviderOptions>
 }
@@ -72,6 +74,7 @@ export function loadConfig(): Config {
   return {
     cacheTTL: parsed.data.cacheTTL,
     detect: parsed.data.detect,
+    contrast: parsed.data.contrast,
     accounts,
     options,
   }
