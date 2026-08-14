@@ -39,16 +39,6 @@ type Row =
       tone: 'normal' | 'dim' | 'error'
     }
 
-type Block = {
-  provider: string
-  name: string
-  named: boolean
-  label: string | null
-  plan: string | null
-  color: string
-  rows: Row[]
-}
-
 function labelText(key: string): string {
   return key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase()
 }
@@ -165,23 +155,6 @@ function rowsFor(subscription: AccountUsageResult): Row[] {
   return rows
 }
 
-function blocksFor(results: AccountUsageResult[]): Block[] {
-  return results.map((subscription) => {
-    return {
-      provider: subscription.provider,
-      name:
-        subscription.sourceName ??
-        subscription.accountInfo ??
-        subscription.provider,
-      named: subscription.sourceName !== undefined,
-      label: subscription.accountInfo ?? null,
-      plan: subscription.accountPlan ?? null,
-      color: subscription.color,
-      rows: rowsFor(subscription),
-    }
-  })
-}
-
 function drawBar(row: Row, width: number, color: string): string {
   if (row.kind !== 'bar') return ''
 
@@ -194,10 +167,9 @@ function drawBar(row: Row, width: number, color: string): string {
 }
 
 export function render(results: AccountUsageResult[]): string {
-  const blocks = blocksFor(results)
-  if (blocks.length === 0) return ''
+  if (results.length === 0) return ''
 
-  const rows = blocks.flatMap((block) => block.rows)
+  const rows = results.flatMap(rowsFor)
   const labelWidth = Math.max(...rows.map((row) => row.label.length))
   const bars = rows.filter((row) => row.kind === 'bar')
 
@@ -220,27 +192,27 @@ export function render(results: AccountUsageResult[]): string {
   const lines: string[] = []
   let provider: string | null = null
 
-  for (const block of blocks) {
-    const heading = block.provider !== provider
+  for (const result of results) {
+    const heading = result.provider !== provider
     if (heading) {
-      provider = block.provider
+      provider = result.provider
       lines.push('')
-      lines.push(pad + chalk.bold.hex(block.color)(block.provider))
+      lines.push(pad + chalk.bold.hex(result.color)(result.provider))
     }
 
     if (!heading) lines.push('')
 
-    const label = block.label ?? ''
-    const plan = block.plan ?? ''
+    const name = result.sourceName ?? result.accountInfo ?? result.provider
+    const label = result.accountInfo ?? ''
+    const plan = result.accountPlan ?? ''
 
     let head: string
     if (label === '') {
-      head = chalk.hex(block.color)(block.name)
-    } else if (block.named) {
-      head =
-        chalk.hex(block.color)(block.name) + ' '.repeat(GAP) + chalk.dim(label)
+      head = chalk.hex(result.color)(name)
+    } else if (result.sourceName !== undefined) {
+      head = chalk.hex(result.color)(name) + ' '.repeat(GAP) + chalk.dim(label)
     } else {
-      head = chalk.hex(block.color)(label)
+      head = chalk.hex(result.color)(label)
     }
 
     lines.push(
@@ -250,7 +222,7 @@ export function render(results: AccountUsageResult[]): string {
         (plan === '' ? '' : chalk.dim(` · ${plan}`))
     )
 
-    for (const row of block.rows) {
+    for (const row of rowsFor(result)) {
       const label = row.label.padEnd(labelWidth)
       const prefix = pad + ' '.repeat(ROW_INDENT)
 
@@ -261,7 +233,7 @@ export function render(results: AccountUsageResult[]): string {
           prefix +
             label +
             ' '.repeat(GAP) +
-            drawBar(row, barWidth, block.color) +
+            drawBar(row, barWidth, result.color) +
             ' '.repeat(GAP) +
             row.value.padStart(valueWidth) +
             detail

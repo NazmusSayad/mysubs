@@ -44,40 +44,17 @@ export function loadConfig() {
   const options: Record<string, ProviderOptions> = {}
 
   for (const [provider, entry] of Object.entries(providers)) {
-    const value = parsed.data[provider]
-    if (value === undefined) {
-      const parsedOptions = entry.optionsSchema.parse({})
-      if (
-        typeof parsedOptions !== 'object' ||
-        parsedOptions === null ||
-        Array.isArray(parsedOptions) ||
-        !('cache' in parsedOptions) ||
-        typeof parsedOptions.cache !== 'boolean' ||
-        !('__type' in parsedOptions) ||
-        parsedOptions.__type !== 'options'
-      ) {
-        throw new Error(`${file} is invalid`)
-      }
-      options[provider] = {
-        ...parsedOptions,
-        cache: parsedOptions.cache,
-        __type: 'options',
-      }
-      accounts[provider] = []
-      continue
-    }
-
-    const providerConfig = providerConfigSchema.safeParse(value)
+    const providerConfig = providerConfigSchema.safeParse(
+      parsed.data[provider] ?? {}
+    )
     if (!providerConfig.success) {
       throw new Error(`${file} is invalid`)
     }
 
     const configured = providerConfig.data.accounts
-    if (configured === undefined) {
-      accounts[provider] = []
-    } else {
+    accounts[provider] = []
+    if (configured !== undefined) {
       const parsedAccounts = z.array(entry.accountSchema).parse(configured)
-      accounts[provider] = []
       for (const parsedAccount of parsedAccounts) {
         if (
           typeof parsedAccount !== 'object' ||

@@ -84,8 +84,10 @@ function readAll(): Record<
   const parsed = cacheRootSchema.safeParse(raw)
   if (!parsed.success) return {}
 
-  const entries: Record<string, { expiresAt: number; value: AccountUsageResult }> =
-    {}
+  const entries: Record<
+    string,
+    { expiresAt: number; value: AccountUsageResult }
+  > = {}
   for (const [key, value] of Object.entries(parsed.data)) {
     if (!cacheKeySchema.safeParse(key).success) continue
     const entry = cacheEntrySchema.safeParse(value)
