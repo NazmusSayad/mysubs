@@ -205,6 +205,7 @@ export function render(results: AccountUsageResult[]): string {
     const name = result.sourceName ?? result.accountInfo ?? result.provider
     const label = result.accountInfo ?? ''
     const plan = result.accountPlan ?? ''
+    const cacheStatus = result.cached ? chalk.dim(' ♲ cached') : ''
 
     let head: string
     if (label === '') {
@@ -219,7 +220,8 @@ export function render(results: AccountUsageResult[]): string {
       pad +
         ' '.repeat(ACCOUNT_INDENT) +
         head +
-        (plan === '' ? '' : chalk.dim(` · ${plan}`))
+        (plan === '' ? '' : chalk.dim(` · ${plan}`)) +
+        cacheStatus
     )
 
     for (const row of rowsFor(result)) {

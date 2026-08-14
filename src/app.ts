@@ -133,7 +133,7 @@ export async function runUsage(options: {
       if (key !== null && target.options.cache && options.force !== true) {
         const cached = readCache(key, target.provider)
         if (cached !== null) {
-          resolved = cached
+          resolved = { ...cached, cached: true }
         }
       }
 
@@ -144,6 +144,7 @@ export async function runUsage(options: {
         )
         resolved = {
           ...result,
+          cached: false,
           ...(target.sourceName === undefined
             ? {}
             : { sourceName: target.sourceName }),

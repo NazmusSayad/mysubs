@@ -555,6 +555,7 @@ function mapUsage(
 
   const result: AccountUsageResult = {
     provider: 'codex',
+    cached: false,
     color: account.color ?? '#72317b',
     usage,
   }
@@ -624,6 +625,7 @@ export async function fetchCodexAccount(
   } catch (error) {
     return {
       provider: 'codex',
+      cached: false,
       color: typeof account.color === 'string' ? account.color : '#72317b',
       error: error instanceof Error ? error.message : String(error),
     }

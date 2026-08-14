@@ -217,6 +217,7 @@ export async function fetchOpenRouterAccount(
     if (Object.keys(usage).length > 0) {
       const result: AccountUsageResult = {
         provider: 'openrouter',
+        cached: false,
         color: parsedAccount.color ?? '#6467f2',
         usage,
       }
@@ -234,6 +235,7 @@ export async function fetchOpenRouterAccount(
   } catch (error) {
     return {
       provider: 'openrouter',
+      cached: false,
       color: typeof account.color === 'string' ? account.color : '#6467f2',
       error: error instanceof Error ? error.message : String(error),
     }

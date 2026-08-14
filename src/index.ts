@@ -55,9 +55,9 @@ function readSecret(prompt: string): Promise<string> {
 
 const program = new Command('mysubs')
   .description('check usage across multiple accounts')
-  .option('--subs <list>', 'filter providers or accounts')
-  .option('--json', 'JSON-only output')
-  .option('--force', 'ignore cache and refetch')
+  .option('-s, --subs <list>', 'filter providers or accounts')
+  .option('-j, --json', 'JSON-only output')
+  .option('-f, --force', 'ignore cache and refetch')
   .action(async (options) => {
     process.exitCode = await runUsage(options)
   })

@@ -442,6 +442,7 @@ function mapUsage(
 
   return {
     provider: 'claude',
+    cached: false,
     color: color ?? '#d97757',
     usage,
   }
@@ -515,6 +516,7 @@ export async function fetchClaudeAccount(
   } catch (error) {
     return {
       provider: 'claude',
+      cached: false,
       color: typeof account.color === 'string' ? account.color : '#d97757',
       error: error instanceof Error ? error.message : String(error),
     }
