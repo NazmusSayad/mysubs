@@ -46,6 +46,12 @@ Example:
       { "name": "go", "product": "go", "apiKey": "env:OPENCODE_API_KEY" },
       { "name": "zen", "product": "zen", "cookie": "key:opencode-zen" }
     ]
+  },
+  "copilot": {
+    "accounts": [
+      { "name": "cli", "source": "gh" },
+      { "name": "work", "source": "token", "token": "key:copilot-work" }
+    ]
   }
 }
 ```
@@ -65,3 +71,18 @@ mysubs key get openrouter   # prints the stored secret
 
 OpenCode Go uses an API key. Zen usage requires an authenticated `Cookie` header
 from `opencode.ai`; optionally set `workspaceID` to select a specific workspace.
+
+## GitHub Copilot
+
+Copilot reads a GitHub token. Detection uses `GITHUB_TOKEN`, then `GH_TOKEN`, and
+falls back to `gh auth token` when the GitHub CLI is installed and signed in, so
+`gh auth login` is usually all the setup you need.
+
+To configure it explicitly, set `source` on the account:
+
+- `"source": "gh"` — run `gh auth token` at fetch time
+- `"source": "token"` — resolve `token` from an env var or the keyring
+
+Paid plans meter AI credits, shown as `credits`. Chat and completions are
+unlimited there and stay hidden; on the free plan they show instead. Org-managed
+Business/Enterprise seats report no per-seat quota, so only the plan is shown.

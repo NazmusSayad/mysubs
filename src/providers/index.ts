@@ -7,6 +7,9 @@ import { detectClaudeAccounts } from './claude/detect'
 import { fetchCodexAccount } from './codex'
 import { codexAccountSchema, codexOptionsSchema } from './codex/config'
 import { detectCodexAccounts } from './codex/detect'
+import { fetchCopilotAccount } from './copilot'
+import { copilotAccountSchema, copilotOptionsSchema } from './copilot/config'
+import { detectCopilotAccounts } from './copilot/detect'
 import { fetchOpenCodeAccount } from './opencode'
 import { opencodeAccountSchema, opencodeOptionsSchema } from './opencode/config'
 import { detectOpenCodeAccounts } from './opencode/detect'
@@ -33,6 +36,14 @@ export const providers: Record<string, ProviderEntry> = {
     accountSchema: claudeAccountSchema,
     detectDefaults: detectClaudeAccounts,
     fetchAccount: fetchClaudeAccount,
+  },
+  copilot: {
+    name: 'Copilot',
+    color: '#58a6ff',
+    optionsSchema: copilotOptionsSchema,
+    accountSchema: copilotAccountSchema,
+    detectDefaults: detectCopilotAccounts,
+    fetchAccount: fetchCopilotAccount,
   },
   openrouter: {
     name: 'OpenRouter',
