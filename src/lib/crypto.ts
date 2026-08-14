@@ -2,7 +2,7 @@ import { createHmac, randomBytes } from 'node:crypto'
 import type { ProviderAccount } from '../core/types'
 import { getKey, setKey } from '../utils/keyring'
 
-const CACHE_SECRET = 'cache-secret'
+const CACHE_SECRET_KEYRING_NAME = 'cache-secret'
 
 export function cacheKey(
   provider: string,
@@ -10,10 +10,10 @@ export function cacheKey(
 ): string | null {
   let secret: string | null
   try {
-    secret = getKey(CACHE_SECRET)
+    secret = getKey(CACHE_SECRET_KEYRING_NAME)
     if (secret === null) {
       secret = randomBytes(32).toString('base64url')
-      setKey(CACHE_SECRET, secret)
+      setKey(CACHE_SECRET_KEYRING_NAME, secret)
     }
   } catch {
     return null
