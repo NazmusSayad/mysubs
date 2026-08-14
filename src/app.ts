@@ -78,6 +78,7 @@ function selectAccountTargets(
     const matches = targets.filter((target) => {
       if (target.provider !== provider) return false
       if (account === null) return true
+      if (account === '') return target.sourceType !== 'manual'
       return target.sourceKey === account
     })
 
