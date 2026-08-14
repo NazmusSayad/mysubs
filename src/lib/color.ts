@@ -1,4 +1,4 @@
-const HUE_AT_EMPTY = 130
+const HUE_AT_FULL = 130
 const LIGHTNESS = 0.48
 
 function channel(hue: number, saturation: number, offset: number): number {
@@ -13,7 +13,7 @@ export function usageColor(ratio: number, contrast: number): string {
   if (!Number.isFinite(contrast))
     throw new Error(`invalid contrast: ${contrast}`)
 
-  const hue = (1 - Math.max(0, Math.min(1, ratio))) * HUE_AT_EMPTY
+  const hue = Math.max(0, Math.min(1, ratio)) * HUE_AT_FULL
   const saturation = Math.max(0, Math.min(1, contrast))
 
   const red = channel(hue, saturation, 0)

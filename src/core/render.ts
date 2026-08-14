@@ -29,7 +29,7 @@ type Row =
       kind: 'bar'
       label: string
       ratio: number
-      used: number
+      remaining: number
       value: string
       detail: string
     }
@@ -58,7 +58,8 @@ function barRow(label: string, resource: UsageResource): Row | null {
   if (resource.limit === undefined) return null
   if (resource.limit <= 0) return null
 
-  const ratio = resource.used / resource.limit
+  const remaining = Math.max(0, resource.limit - resource.used)
+  const ratio = remaining / resource.limit
 
   let detail = resetDetail(resource)
   if (detail === '' && resource.unit === 'usd') {
@@ -71,7 +72,7 @@ function barRow(label: string, resource: UsageResource): Row | null {
     kind: 'bar',
     label,
     ratio,
-    used: resource.used,
+    remaining,
     value: formatPercent(ratio * 100),
     detail,
   }
@@ -160,7 +161,7 @@ function drawBar(row: Row, width: number, contrast: number): string {
   if (row.kind !== 'bar') return ''
 
   let fill = Math.round(Math.min(1, Math.max(0, row.ratio)) * width)
-  if (fill === 0 && row.used > 0) fill = 1
+  if (fill === 0 && row.remaining > 0) fill = 1
 
   return (
     chalk.hex(usageColor(row.ratio, contrast))('█'.repeat(fill)) +
@@ -168,9 +169,6 @@ function drawBar(row: Row, width: number, contrast: number): string {
   )
 }
 
-// Column widths are measured across the results of a single call. Callers that
-// stream one account at a time therefore align columns within an account but not
-// between accounts; aligning globally would require buffering every account.
 export function render(
   results: AccountUsageResult[],
   contrast: number

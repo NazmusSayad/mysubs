@@ -21,16 +21,16 @@ describe('usageColor', () => {
     expect(usageColor(0.5, CONTRAST)).toMatch(/^#[0-9a-f]{6}$/)
   })
 
-  it('is green when nothing is used', () => {
+  it('is red when nothing is used', () => {
     const { red, green, blue } = channels(usageColor(0, CONTRAST))
-    expect(green).toBeGreaterThan(red)
-    expect(green).toBeGreaterThan(blue)
-  })
-
-  it('is red when everything is used', () => {
-    const { red, green, blue } = channels(usageColor(1, CONTRAST))
     expect(red).toBeGreaterThan(green)
     expect(red).toBeGreaterThan(blue)
+  })
+
+  it('is green when everything is used', () => {
+    const { red, green, blue } = channels(usageColor(1, CONTRAST))
+    expect(green).toBeGreaterThan(red)
+    expect(green).toBeGreaterThan(blue)
   })
 
   it('is warm and bright in the middle', () => {
@@ -39,7 +39,7 @@ describe('usageColor', () => {
     expect(green).toBeGreaterThan(blue)
   })
 
-  it('gets redder as usage climbs', () => {
+  it('gets greener as usage climbs', () => {
     const steps = [0, 0.25, 0.5, 0.75, 1].map((ratio) =>
       channels(usageColor(ratio, CONTRAST))
     )
@@ -48,8 +48,8 @@ describe('usageColor', () => {
       const current = steps[index]
       if (previous === undefined) throw new Error('missing step')
       if (current === undefined) throw new Error('missing step')
-      expect(current.red).toBeGreaterThanOrEqual(previous.red)
-      expect(current.green).toBeLessThanOrEqual(previous.green)
+      expect(current.green).toBeGreaterThanOrEqual(previous.green)
+      expect(current.red).toBeLessThanOrEqual(previous.red)
     }
   })
 

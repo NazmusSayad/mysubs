@@ -48,7 +48,7 @@ Example:
 }
 ```
 
-Usage bars run from green when little is used to red when a limit is nearly spent.
+Usage bars run from red when little is used to green when a limit is nearly spent.
 `contrast` (0 to 1, default `0.4`) controls how strong those colors are: lower is
 calmer, `0` is plain grey, higher is more vivid.
 
