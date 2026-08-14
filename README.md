@@ -34,31 +34,37 @@ Example:
   "nerdFont": true,
   "maxWidth": 120,
   "codex": {
-    "detect": false,
-    "accounts": [{ "name": "work", "configDir": "~/.config/codex" }]
+    "accounts": {
+      "work": { "name": "Work", "configDir": "~/.config/codex" }
+    }
   },
   "claude": {
-    "accounts": [{ "name": "personal", "configDir": "~/.claude" }]
+    "accounts": {
+      "personal": { "configDir": "~/.claude" }
+    }
   },
   "openrouter": {
-    "accounts": [{ "name": "main", "apiKey": "env:OPENROUTER_API_KEY" }]
+    "accounts": {
+      "main": { "apiKey": "env:OPENROUTER_API_KEY" }
+    }
   },
   "opencode": {
-    "accounts": [
-      { "name": "go", "product": "go", "apiKey": "env:OPENCODE_API_KEY" },
-      { "name": "zen", "product": "zen", "cookie": "key:opencode-zen" }
-    ]
+    "accounts": {
+      "go": { "product": "go", "apiKey": "env:OPENCODE_API_KEY" },
+      "zen": { "product": "zen", "cookie": "key:opencode-zen" }
+    }
   },
   "copilot": {
-    "accounts": [
-      { "name": "cli", "source": "gh" },
-      { "name": "work", "source": "token", "token": "key:copilot-work" }
-    ]
+    "accounts": {
+      "cli": { "source": "gh" },
+      "work": { "source": "token", "token": "key:copilot-work" }
+    }
   }
 }
 ```
 
-Set `detect` inside an individual provider to `false` to skip automatic account
+Account keys select the account, such as `mysubs codex:work`; `name` is an
+optional display name. Set `detect` inside an individual provider to `false` to skip automatic account
 detection for that provider. The root `detect` setting still disables detection
 for every provider.
 

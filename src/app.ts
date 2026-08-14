@@ -14,6 +14,7 @@ type AccountTarget = {
   provider: string
   account: ProviderAccount
   options: ProviderOptions
+  sourceKey?: string
   sourceName?: string
   sourceType?: 'manual'
 }
@@ -41,21 +42,17 @@ async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
       }
     }
 
-    const configuredNames = new Set<string>()
-    for (const account of config.accounts[provider] ?? []) {
+    for (const [key, account] of Object.entries(
+      config.accounts[provider] ?? {}
+    )) {
       const name = account.name
-      if (typeof name === 'string') {
-        if (configuredNames.has(name)) {
-          throw new Error(`duplicate ${provider} account name: ${name}`)
-        }
-        configuredNames.add(name)
-      }
       targets.push({
         provider,
         account,
         options,
-        ...(typeof name === 'string' ? { sourceName: name } : {}),
+        sourceKey: key,
         sourceType: 'manual',
+        sourceName: typeof name === 'string' && name !== '' ? name : undefined,
       })
     }
   }
@@ -81,7 +78,7 @@ function selectAccountTargets(
     const matches = targets.filter((target) => {
       if (target.provider !== provider) return false
       if (account === null) return true
-      return target.sourceName === account
+      return target.sourceKey === account
     })
 
     if (matches.length === 0) {
