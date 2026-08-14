@@ -5,18 +5,16 @@ import { z } from 'zod'
 import { providers } from '../providers'
 import type { ProviderAccount, ProviderOptions } from './types'
 
-export const configSchema = z
-  .object({
-    cacheTTL: z.union([z.number(), z.string()]).default('1m'),
-    detect: z.boolean().default(true),
-    contrast: z.number().min(0).max(1).default(0.4),
-    nerdFont: z.boolean().default(false),
-    maxWidth: z.number().min(80).default(120),
-  })
-  .passthrough()
-const providerConfigSchema = z
-  .object({ accounts: z.unknown().optional() })
-  .passthrough()
+export const configSchema = z.looseObject({
+  cacheTTL: z.union([z.number(), z.string()]).default('1m'),
+  detect: z.boolean().default(true),
+  contrast: z.number().min(0).max(1).default(0.4),
+  nerdFont: z.boolean().default(false),
+  maxWidth: z.number().min(80).default(120),
+})
+const providerConfigSchema = z.looseObject({
+  accounts: z.unknown().optional(),
+})
 
 export function configPath(): string {
   const xdg = process.env.XDG_CONFIG_HOME

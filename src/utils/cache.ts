@@ -6,12 +6,10 @@ import { z } from 'zod'
 import { accountUsageResultSchema } from '../core/schema'
 import type { AccountUsageResult } from '../core/types'
 
-const cacheEntrySchema = z
-  .object({
-    expiresAt: z.int().gte(0),
-    value: accountUsageResultSchema,
-  })
-  .strict()
+const cacheEntrySchema = z.strictObject({
+  expiresAt: z.int().gte(0),
+  value: accountUsageResultSchema,
+})
 const cacheKeySchema = z.string().regex(/^[a-f0-9]{64}$/)
 const cacheRootSchema = z.record(z.string(), z.unknown())
 
