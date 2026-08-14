@@ -5,9 +5,9 @@ import { configPath, loadConfig } from './core/config'
 import { render } from './core/render'
 import type { ProviderAccount, ProviderOptions } from './core/types'
 import { cacheKey } from './lib/crypto'
+import { getKeyringEntrySecret, setKeyringEntrySecret } from './lib/keyring'
 import { providers } from './providers'
 import { parseTTL, readCache, writeCache } from './utils/cache'
-import { getKey, setKey } from './lib/keyring'
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
@@ -64,7 +64,7 @@ async function runUsage(options: {
   force?: boolean
 }): Promise<number> {
   const config = loadConfig()
-  const all: {
+  const accountTargets: {
     provider: string
     account: ProviderAccount
     options: ProviderOptions
@@ -73,17 +73,17 @@ async function runUsage(options: {
   }[] = []
 
   for (const [provider, entry] of Object.entries(providers)) {
-    const names = new Set<string>()
+    const configuredAccountNames = new Set<string>()
 
     for (const account of config.accounts[provider] ?? []) {
       const name = account.name
       if (typeof name === 'string') {
-        if (names.has(name)) {
+        if (configuredAccountNames.has(name)) {
           throw new Error(`duplicate ${provider} account name: ${name}`)
         }
-        names.add(name)
+        configuredAccountNames.add(name)
       }
-      all.push({
+      accountTargets.push({
         provider,
         account,
         options: config.options[provider],
@@ -97,23 +97,27 @@ async function runUsage(options: {
     try {
       const detected = await entry.detectDefaults()
       for (const account of detected) {
-        all.push({ provider, account, options: config.options[provider] })
+        accountTargets.push({
+          provider,
+          account,
+          options: config.options[provider],
+        })
       }
     } catch {
       continue
     }
   }
 
-  if (all.length === 0) {
+  if (accountTargets.length === 0) {
     process.stderr.write(
       `no accounts configured and none detected. create ${configPath()} to add one.\n`
     )
     return 1
   }
 
-  const selected = [] as typeof all
+  const selectedAccountTargets = [] as typeof accountTargets
   if (options.subs === undefined) {
-    selected.push(...all)
+    selectedAccountTargets.push(...accountTargets)
   } else {
     for (const raw of options.subs.split(',')) {
       const token = raw.trim()
@@ -122,7 +126,7 @@ async function runUsage(options: {
       const separator = token.indexOf(':')
       const provider = separator === -1 ? token : token.slice(0, separator)
       const account = separator === -1 ? null : token.slice(separator + 1)
-      const matches = all.filter((target) => {
+      const matches = accountTargets.filter((target) => {
         if (target.provider !== provider) return false
         if (account === null) return true
         return target.sourceName === account
@@ -132,14 +136,16 @@ async function runUsage(options: {
         throw new Error(`no configured account matches "${token}"`)
       }
       for (const match of matches) {
-        if (!selected.includes(match)) selected.push(match)
+        if (!selectedAccountTargets.includes(match)) {
+          selectedAccountTargets.push(match)
+        }
       }
     }
   }
 
   const ttl = parseTTL(config.cacheTTL)
   const results = await Promise.all(
-    selected.map(async (target) => {
+    selectedAccountTargets.map(async (target) => {
       const key = cacheKey(target.provider, target.account)
       if (key !== null && target.options.cache && options.force !== true) {
         const cached = readCache(key, target.provider)
@@ -192,9 +198,9 @@ const program = new Command('mysubs')
     process.exitCode = await runUsage(options)
   })
 
-const key = program.command('key').description('manage keyring secrets')
+const keyCommand = program.command('key').description('manage keyring secrets')
 
-key
+keyCommand
   .command('set <name>')
   .description('store a secret in the OS keyring')
   .action(async (name: string) => {
@@ -204,15 +210,15 @@ key
       process.exitCode = 1
       return
     }
-    setKey(name, secret)
+    setKeyringEntrySecret(name, secret)
     process.stderr.write(`stored ${name}\n`)
   })
 
-key
+keyCommand
   .command('get <name>')
   .description('read a secret from the OS keyring')
   .action((name: string) => {
-    const value = getKey(name)
+    const value = getKeyringEntrySecret(name)
     if (value === null) {
       process.stderr.write(`mysubs: no keyring entry named ${name}\n`)
       process.exitCode = 1

@@ -113,21 +113,21 @@ function loadAuth(configDir: string): AuthState {
   const file = credentialsPath(configDir)
   const shared = path.resolve(configDir) === path.resolve(claudeConfigRoot())
 
-  let found: { text: string; source: CredentialSource } | null = null
-  if (shared) found = readFromKeychain()
-  if (found === null && fs.existsSync(file)) {
-    found = {
+  let credentials: { text: string; source: CredentialSource } | null = null
+  if (shared) credentials = readFromKeychain()
+  if (credentials === null && fs.existsSync(file)) {
+    credentials = {
       text: fs.readFileSync(file, 'utf8'),
       source: { kind: 'file', path: file },
     }
   }
-  if (found === null) {
+  if (credentials === null) {
     throw new Error('not signed in, run `claude` to log in')
   }
 
   let raw: unknown
   try {
-    raw = JSON.parse(found.text)
+    raw = JSON.parse(credentials.text)
   } catch {
     throw new Error('claude credentials are not valid JSON')
   }
@@ -143,7 +143,7 @@ function loadAuth(configDir: string): AuthState {
   return {
     raw: raw as Record<string, unknown>,
     oauth: parsed.data.claudeAiOauth ?? {},
-    source: found.source,
+    source: credentials.source,
   }
 }
 
@@ -346,7 +346,7 @@ function resetTime(value: string | number | null | undefined): string | null {
 
 function windowResource(
   utilization: number,
-  resets: string | number | null | undefined
+  resetValue: string | number | null | undefined
 ): UsageResource {
   const used = Math.max(0, utilization)
   const resource: UsageResource = {
@@ -358,7 +358,7 @@ function windowResource(
     utilization: used / 100,
   }
 
-  const resetsAt = resetTime(resets)
+  const resetsAt = resetTime(resetValue)
   if (resetsAt !== null) resource.resetsAt = resetsAt
   return resource
 }

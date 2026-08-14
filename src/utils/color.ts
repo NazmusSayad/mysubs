@@ -7,7 +7,7 @@ export const colorSchema = z
 function hslToHex(hue: number, saturation: number, lightness: number): string {
   const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation
   const second = chroma * (1 - Math.abs(((hue / 60) % 2) - 1))
-  const match = lightness - chroma / 2
+  const lightnessOffset = lightness - chroma / 2
 
   let red = 0
   let green = 0
@@ -34,7 +34,7 @@ function hslToHex(hue: number, saturation: number, lightness: number): string {
   }
 
   const channels = [red, green, blue].map((channel) =>
-    Math.round((channel + match) * 255)
+    Math.round((channel + lightnessOffset) * 255)
       .toString(16)
       .padStart(2, '0')
   )

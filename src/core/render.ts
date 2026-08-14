@@ -179,14 +179,14 @@ export function render(results: AccountUsageResult[]): string {
     bars.length === 0 ? 0 : Math.max(...bars.map((row) => row.detail.length))
 
   const available = (process.stdout.columns ?? 80) - PADDING * 2
-  const used =
+  const fixedRowWidth =
     ROW_INDENT +
     labelWidth +
     GAP +
     GAP +
     valueWidth +
     (detailWidth === 0 ? 0 : GAP + detailWidth)
-  const barWidth = Math.max(MIN_BAR_WIDTH, available - used)
+  const barWidth = Math.max(MIN_BAR_WIDTH, available - fixedRowWidth)
 
   const pad = ' '.repeat(PADDING)
   const lines: string[] = []

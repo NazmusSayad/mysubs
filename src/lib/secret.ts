@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { getKey } from './keyring'
+import { getKeyringEntrySecret } from './keyring'
 
 export const secretRefSchema = z
   .string()
@@ -25,7 +25,7 @@ export function resolveSecret(ref: string): string {
   }
 
   if (scheme === 'key') {
-    const value = getKey(name)
+    const value = getKeyringEntrySecret(name)
     if (value === null) {
       throw new Error(
         `no keyring entry named ${name}, run \`mysubs key set ${name}\``

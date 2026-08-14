@@ -73,7 +73,7 @@ type AuthState = {
   auth: Auth
   source: AuthSource
 }
-type Candidate = {
+type RateLimitWindowCandidate = {
   window: Window
   usedPercent: number | null
   slot: 'session' | 'weekly'
@@ -439,15 +439,15 @@ function windowResource(window: Window, usedPercent: number): UsageResource {
   return resource
 }
 
-function candidates(
+function collectRateLimitWindowCandidates(
   rateLimit: { primary_window?: unknown; secondary_window?: unknown } | null,
   headerPercents: { primary: number | null; secondary: number | null }
-): Candidate[] {
-  const found: Candidate[] = []
+): RateLimitWindowCandidate[] {
+  const candidates: RateLimitWindowCandidate[] = []
 
   const primary = windowSchema.safeParse(rateLimit?.primary_window)
   if (primary.success && primary.data != null) {
-    found.push({
+    candidates.push({
       window: primary.data,
       usedPercent: primary.data.used_percent ?? headerPercents.primary,
       slot: 'session',
@@ -456,14 +456,14 @@ function candidates(
 
   const secondary = windowSchema.safeParse(rateLimit?.secondary_window)
   if (secondary.success && secondary.data != null) {
-    found.push({
+    candidates.push({
       window: secondary.data,
       usedPercent: secondary.data.used_percent ?? headerPercents.secondary,
       slot: 'weekly',
     })
   }
 
-  return found
+  return candidates
 }
 
 function exactKind(window: Window): 'session' | 'weekly' | null {
@@ -472,14 +472,16 @@ function exactKind(window: Window): 'session' | 'weekly' | null {
   return null
 }
 
-function classify(
-  found: Candidate[],
+function selectRateLimitWindow(
+  candidates: RateLimitWindowCandidate[],
   kind: 'session' | 'weekly'
-): Candidate | null {
-  const exact = found.find((candidate) => exactKind(candidate.window) === kind)
+): RateLimitWindowCandidate | null {
+  const exact = candidates.find(
+    (candidate) => exactKind(candidate.window) === kind
+  )
   if (exact !== undefined) return exact
 
-  const fallback = found.find(
+  const fallback = candidates.find(
     (candidate) =>
       exactKind(candidate.window) === null && candidate.slot === kind
   )
@@ -490,15 +492,15 @@ function classify(
 
 function assignWindows(
   usage: Record<string, UsageResource>,
-  found: Candidate[],
+  candidates: RateLimitWindowCandidate[],
   keys: { session: string; weekly: string }
 ): void {
-  const session = classify(found, 'session')
+  const session = selectRateLimitWindow(candidates, 'session')
   if (session !== null && session.usedPercent !== null) {
     usage[keys.session] = windowResource(session.window, session.usedPercent)
   }
 
-  const weekly = classify(found, 'weekly')
+  const weekly = selectRateLimitWindow(candidates, 'weekly')
   if (weekly !== null && weekly.usedPercent !== null) {
     usage[keys.weekly] = windowResource(weekly.window, weekly.usedPercent)
   }
@@ -513,7 +515,7 @@ function mapUsage(
 
   assignWindows(
     usage,
-    candidates(body.rate_limit ?? null, {
+    collectRateLimitWindowCandidates(body.rate_limit ?? null, {
       primary: headerNumber(response, 'x-codex-primary-used-percent'),
       secondary: headerNumber(response, 'x-codex-secondary-used-percent'),
     }),
@@ -524,19 +526,19 @@ function mapUsage(
     if (typeof entry !== 'object' || entry === null) continue
     const fields = entry as Record<string, unknown>
 
-    const name = extraLimitName(fields)
-    if (name === null) continue
+    const usageKey = extraLimitUsageKey(fields)
+    if (usageKey === null) continue
 
     const rateLimit = fields.rate_limit
     if (typeof rateLimit !== 'object' || rateLimit === null) continue
 
     assignWindows(
       usage,
-      candidates(rateLimit as Record<string, unknown>, {
+      collectRateLimitWindowCandidates(rateLimit as Record<string, unknown>, {
         primary: null,
         secondary: null,
       }),
-      { session: name, weekly: `${name}Weekly` }
+      { session: usageKey, weekly: `${usageKey}Weekly` }
     )
   }
 
@@ -563,7 +565,7 @@ function mapUsage(
   return result
 }
 
-function extraLimitName(fields: Record<string, unknown>): string | null {
+function extraLimitUsageKey(fields: Record<string, unknown>): string | null {
   const raw = fields.limit_name ?? fields.metered_feature
   if (typeof raw !== 'string') return null
 

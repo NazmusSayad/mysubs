@@ -36,7 +36,10 @@ type Outcome =
 type UsageResource =
   AccountSubscriptionBalanceUsage | AccountSubscriptionConsumptionUsage
 
-async function load(url: string, apiKey: string): Promise<Outcome> {
+async function fetchEndpointData(
+  url: string,
+  apiKey: string
+): Promise<Outcome> {
   let response: Response
   try {
     response = await fetch(url, {
@@ -129,11 +132,11 @@ function keyLimitName(reset: string | null | undefined): string {
 
 function assignSpend(
   usage: Record<string, UsageResource>,
-  key: string,
+  usageKey: string,
   amount: number | null | undefined
 ): void {
   if (typeof amount !== 'number') return
-  usage[key] = {
+  usage[usageKey] = {
     kind: 'consumption',
     unit: 'usd',
     used: Math.max(0, amount),
@@ -147,17 +150,17 @@ export async function fetchOpenRouterAccount(
   try {
     const parsedAccount = openrouterAccountSchema.parse(account)
     const apiKey = resolveSecret(parsedAccount.apiKey)
-    const [credits, key] = await Promise.all([
-      load(CREDITS_URL, apiKey),
-      load(KEY_URL, apiKey),
+    const [creditsOutcome, keyOutcome] = await Promise.all([
+      fetchEndpointData(CREDITS_URL, apiKey),
+      fetchEndpointData(KEY_URL, apiKey),
     ])
 
     const usage: Record<string, UsageResource> = {}
     let accountPlan: string | null = null
     let accountInfo: string | null = null
 
-    if (credits.kind === 'data') {
-      const parsed = creditsSchema.safeParse(credits.data)
+    if (creditsOutcome.kind === 'data') {
+      const parsed = creditsSchema.safeParse(creditsOutcome.data)
       if (parsed.success && typeof parsed.data.total_usage === 'number') {
         const used = Math.max(0, parsed.data.total_usage)
         const total = Math.max(0, parsed.data.total_credits ?? 0)
@@ -180,8 +183,8 @@ export async function fetchOpenRouterAccount(
       }
     }
 
-    if (key.kind === 'data') {
-      const parsed = keySchema.safeParse(key.data)
+    if (keyOutcome.kind === 'data') {
+      const parsed = keySchema.safeParse(keyOutcome.data)
       if (parsed.success) {
         assignSpend(usage, 'today', parsed.data.usage_daily)
         assignSpend(usage, 'week', parsed.data.usage_weekly)
@@ -222,11 +225,11 @@ export async function fetchOpenRouterAccount(
       return result
     }
 
-    if (credits.kind === 'auth' && key.kind === 'auth') {
+    if (creditsOutcome.kind === 'auth' && keyOutcome.kind === 'auth') {
       throw new Error('api key invalid, check your key at openrouter.ai/keys')
     }
-    if (credits.kind === 'failed') throw credits.error
-    if (key.kind === 'failed') throw key.error
+    if (creditsOutcome.kind === 'failed') throw creditsOutcome.error
+    if (keyOutcome.kind === 'failed') throw keyOutcome.error
     throw new Error('openrouter usage data unavailable, try again later')
   } catch (error) {
     return {
