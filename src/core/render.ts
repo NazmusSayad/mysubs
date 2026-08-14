@@ -22,7 +22,8 @@ const chalk = createChalk()
 const PADDING = 1
 const ROW_INDENT = 2
 const BAR_MARGIN_LEFT = 2
-const BAR_MARGIN_RIGHT = 2
+const BAR_MARGIN_RIGHT = 1
+const DETAIL_GAP = 1
 const LABEL_WIDTH = 11
 const VALUE_WIDTH = 4
 const DETAIL_WIDTH = 12
@@ -202,7 +203,7 @@ export function render(
       BAR_MARGIN_LEFT -
       BAR_MARGIN_RIGHT -
       VALUE_WIDTH -
-      BAR_MARGIN_RIGHT -
+      DETAIL_GAP -
       DETAIL_WIDTH
   )
 
@@ -252,7 +253,7 @@ export function render(
         const detail =
           row.detail === ''
             ? ''
-            : ' '.repeat(BAR_MARGIN_RIGHT) + chalk.dim(row.detail)
+            : ' '.repeat(DETAIL_GAP) + chalk.dim(row.detail)
         lines.push(
           prefix +
             rowLabel +
