@@ -21,11 +21,15 @@ const chalk = createChalk()
 
 const PADDING = 1
 const ROW_INDENT = 2
-const GAP = 2
+const BAR_MARGIN_LEFT = 2
+const BAR_MARGIN_RIGHT = 2
+const LABEL_WIDTH = 11
+const VALUE_WIDTH = 4
+const DETAIL_WIDTH = 12
 const MIN_BAR_WIDTH = 10
-const SMALLEST_BLOCK = '▏'
-const PARTIAL_BLOCKS = ['▏', '▎', '▍', '▌', '▋', '▊', '▉']
 const TRACK_COLOR = '#3f434d'
+const BLOCK = '█'
+const NERD_BLOCK = '󰝤'
 
 type Row =
   | {
@@ -160,66 +164,47 @@ function rowsFor(subscription: AccountUsageResult): Row[] {
   return rows
 }
 
-function drawBar(row: Row, width: number, contrast: number): string {
+function drawBar(
+  row: Row,
+  width: number,
+  contrast: number,
+  nerdFont: boolean
+): string {
   if (row.kind !== 'bar') return ''
 
-  const color = usageColor(row.ratio, contrast)
-  const exact = Math.min(1, Math.max(0, row.ratio)) * width
-  const full = Math.min(width, Math.floor(exact))
-  const eighths = Math.floor((exact - full) * 8)
+  let block = BLOCK
+  if (nerdFont) block = NERD_BLOCK
 
-  if (full >= width) return chalk.hex(color)('█'.repeat(width))
-
-  if (eighths > 0) {
-    const partial = PARTIAL_BLOCKS[eighths - 1]
-    if (partial === undefined) {
-      throw new Error(`invalid bar fraction: ${eighths}`)
-    }
-    return (
-      chalk.hex(color)('█'.repeat(full)) +
-      chalk.hex(color).bgHex(TRACK_COLOR)(partial) +
-      chalk.hex(TRACK_COLOR)('█'.repeat(width - full - 1))
-    )
-  }
-
-  if (full === 0 && row.remaining > 0) {
-    return (
-      chalk.hex(color).bgHex(TRACK_COLOR)(SMALLEST_BLOCK) +
-      chalk.hex(TRACK_COLOR)('█'.repeat(width - 1))
-    )
-  }
+  let fill = Math.round(Math.min(1, Math.max(0, row.ratio)) * width)
+  if (fill === 0 && row.remaining > 0) fill = 1
 
   return (
-    chalk.hex(color)('█'.repeat(full)) +
-    chalk.hex(TRACK_COLOR)('█'.repeat(width - full))
+    chalk.hex(usageColor(row.ratio, contrast))(block.repeat(fill)) +
+    chalk.hex(TRACK_COLOR)(block.repeat(width - fill))
   )
 }
 
 export function render(
   results: AccountUsageResult[],
-  contrast: number
+  contrast: number,
+  nerdFont: boolean
 ): string {
   if (results.length === 0) return ''
 
   const rendered = results.map((result) => ({ result, rows: rowsFor(result) }))
-  const rows = rendered.flatMap((entry) => entry.rows)
-  const labelWidth = Math.max(...rows.map((row) => row.label.length))
-  const bars = rows.filter((row) => row.kind === 'bar')
-
-  const valueWidth =
-    bars.length === 0 ? 0 : Math.max(...bars.map((row) => row.value.length))
-  const detailWidth =
-    bars.length === 0 ? 0 : Math.max(...bars.map((row) => row.detail.length))
 
   const available = (process.stdout.columns ?? 80) - PADDING * 2
-  const fixedRowWidth =
-    ROW_INDENT +
-    labelWidth +
-    GAP +
-    GAP +
-    valueWidth +
-    (detailWidth === 0 ? 0 : GAP + detailWidth)
-  const barWidth = Math.max(MIN_BAR_WIDTH, available - fixedRowWidth)
+  const fullBarWidth = Math.max(
+    MIN_BAR_WIDTH,
+    available -
+      ROW_INDENT -
+      LABEL_WIDTH -
+      BAR_MARGIN_LEFT -
+      BAR_MARGIN_RIGHT -
+      VALUE_WIDTH -
+      BAR_MARGIN_RIGHT -
+      DETAIL_WIDTH
+  )
 
   const pad = ' '.repeat(PADDING)
   const lines: string[] = []
@@ -247,7 +232,10 @@ export function render(
     }
     if (result.cached) {
       const marker = '♲ cached'
-      const spacing = Math.max(GAP, available - headWidth - marker.length)
+      const spacing = Math.max(
+        BAR_MARGIN_LEFT,
+        available - headWidth - marker.length
+      )
       head += ' '.repeat(spacing) + chalk.dim(marker)
     }
 
@@ -255,20 +243,24 @@ export function render(
     lines.push(pad + head)
 
     for (const row of resultRows) {
-      const rowLabel = row.label.padEnd(labelWidth)
+      const rowLabel = row.label.padEnd(LABEL_WIDTH)
       const prefix = pad + ' '.repeat(ROW_INDENT)
 
       if (row.kind === 'bar') {
+        const overflow = Math.max(0, row.label.length - LABEL_WIDTH)
+        const barWidth = Math.max(MIN_BAR_WIDTH, fullBarWidth - overflow)
         const detail =
-          row.detail === '' ? '' : ' '.repeat(GAP) + chalk.dim(row.detail)
+          row.detail === ''
+            ? ''
+            : ' '.repeat(BAR_MARGIN_RIGHT) + chalk.dim(row.detail)
         lines.push(
           prefix +
             rowLabel +
-            ' '.repeat(GAP) +
-            drawBar(row, barWidth, contrast) +
-            ' '.repeat(GAP) +
+            ' '.repeat(BAR_MARGIN_LEFT) +
+            drawBar(row, barWidth, contrast, nerdFont) +
+            ' '.repeat(BAR_MARGIN_RIGHT) +
             chalk.hex(usageColor(row.ratio, contrast))(
-              row.value.padStart(valueWidth)
+              row.value.padStart(VALUE_WIDTH)
             ) +
             detail
         )
@@ -277,17 +269,22 @@ export function render(
 
       if (row.tone === 'error') {
         lines.push(
-          prefix + chalk.red(rowLabel) + ' '.repeat(GAP) + chalk.red(row.text)
+          prefix +
+            chalk.red(rowLabel) +
+            ' '.repeat(BAR_MARGIN_LEFT) +
+            chalk.red(row.text)
         )
         continue
       }
 
       if (row.tone === 'dim') {
-        lines.push(prefix + rowLabel + ' '.repeat(GAP) + chalk.dim(row.text))
+        lines.push(
+          prefix + rowLabel + ' '.repeat(BAR_MARGIN_LEFT) + chalk.dim(row.text)
+        )
         continue
       }
 
-      lines.push(prefix + rowLabel + ' '.repeat(GAP) + row.text)
+      lines.push(prefix + rowLabel + ' '.repeat(BAR_MARGIN_LEFT) + row.text)
     }
   }
 

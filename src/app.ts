@@ -172,7 +172,9 @@ export async function runUsage(options: {
 
       results.push(resolved)
       if (options.json !== true) {
-        process.stdout.write(`${render([resolved], config.contrast)}\n`)
+        process.stdout.write(
+          `${render([resolved], config.contrast, config.nerdFont)}\n`
+        )
       }
     } finally {
       if (stopProgress !== null) stopProgress()
