@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { providers } from '../providers'
 import type { ProviderAccount, ProviderOptions } from './types'
 
-const configSchema = z
+export const configSchema = z
   .object({
     cacheTTL: z.union([z.number(), z.string()]).default('1m'),
     detect: z.boolean().default(true),
