@@ -1,32 +1,14 @@
 {
-  "name": "npm",
+  "name": "mysubs",
   "version": "0.0.0",
-  "sideEffects": false,
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "typecheck:watch": "tsc --noEmit --watch",
-    "exports": "tsx ./write-exports.ts",
     "build": "tsdown --config ./tsdown.config.ts",
-    "dev": "concurrently --names \"R,T\" --prefix-colors \"blue.dim,magenta.dim\" \"tsdown --config ./tsdown.config.ts --watch\" \"tsc --noEmit --watch\"",
+    "dev": "tsdown --config ./tsdown.config.ts --watch",
     "start": "tsx --watch ./src/index.ts"
-  },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    }
-  },
-  "typesVersions": {
-    "*": {
-      ".": [
-        "./dist/index.d.mts",
-        "./dist/index.d.cts"
-      ]
-    }
   },
   "devDependencies": {
     "@eslint/compat": "^1",
