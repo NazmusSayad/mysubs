@@ -547,11 +547,12 @@ function mapUsage(body: z.infer<typeof usageSchema>, response: Response) {
   const balance = creditBalance(body, response)
   if (balance !== null) {
     const credits = Math.max(0, Math.floor(balance))
-    usage.credits = { kind: 'balance', unit: 'credits', available: credits }
-    usage.creditValue = {
-      kind: 'balance',
-      unit: 'usd',
-      available: credits * CREDIT_USD_RATE,
+    if (credits !== 0) {
+      usage.balance = {
+        kind: 'balance',
+        unit: 'usd',
+        available: credits * CREDIT_USD_RATE,
+      }
     }
   }
 
