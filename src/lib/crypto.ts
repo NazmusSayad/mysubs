@@ -1,6 +1,6 @@
 import { createHmac, randomBytes } from 'node:crypto'
 import type { ProviderAccount } from '../core/types'
-import { getKey, setKey } from '../utils/keyring'
+import { getKey, setKey } from './keyring'
 
 const CACHE_SECRET_KEYRING_NAME = 'cache-secret'
 

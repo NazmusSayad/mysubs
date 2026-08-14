@@ -7,7 +7,7 @@ import type { ProviderAccount, ProviderOptions } from './core/types'
 import { cacheKey } from './lib/crypto'
 import { providers } from './providers'
 import { parseTTL, readCache, writeCache } from './utils/cache'
-import { getKey, setKey } from './utils/keyring'
+import { getKey, setKey } from './lib/keyring'
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message

@@ -6,7 +6,7 @@ import type {
   ProviderAccount,
   ProviderOptions,
 } from '../../core/types'
-import { resolveSecret } from '../../utils/secret'
+import { resolveSecret } from '../../lib/secret'
 import { openrouterAccountSchema } from './config'
 
 const CREDITS_URL = 'https://openrouter.ai/api/v1/credits'
