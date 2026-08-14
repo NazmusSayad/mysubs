@@ -14,6 +14,8 @@ const creditsSchema = z.object({
 const keySchema = z.object({
   label: z.string().nullish(),
   limit: z.number().nullish(),
+  limit_reset: z.string().nullish(),
+  limit_remaining: z.number().nullish(),
   usage: z.number().nullish(),
   usage_daily: z.number().nullish(),
   usage_weekly: z.number().nullish(),
@@ -129,14 +131,16 @@ export async function fetchOpenRouterUsage(
 
       const limit = parsed.data.limit
       if (typeof limit === 'number' && limit > 0) {
-        const used = Math.max(0, parsed.data.usage ?? 0)
-        usage.keyLimit = {
-          kind: 'consumption',
-          unit: 'usd',
-          used,
-          limit,
-          remaining: Math.max(0, limit - used),
-          utilization: used / limit,
+        const used = keyLimitUsed(parsed.data, limit)
+        if (used !== null) {
+          usage[keyLimitName(parsed.data.limit_reset)] = {
+            kind: 'consumption',
+            unit: 'usd',
+            used,
+            limit,
+            remaining: Math.max(0, limit - used),
+            utilization: used / limit,
+          }
         }
       }
 
@@ -161,6 +165,37 @@ export async function fetchOpenRouterUsage(
   if (credits.kind === 'failed') throw credits.error
   if (key.kind === 'failed') throw key.error
   throw new Error('openrouter usage data unavailable, try again later')
+}
+
+function keyLimitUsed(
+  data: z.infer<typeof keySchema>,
+  limit: number
+): number | null {
+  const remaining = data.limit_remaining
+  if (typeof remaining === 'number') {
+    return limit - Math.min(limit, Math.max(0, remaining))
+  }
+
+  const reset = data.limit_reset
+  if (reset === 'daily' && typeof data.usage_daily === 'number') {
+    return Math.max(0, data.usage_daily)
+  }
+  if (reset === 'weekly' && typeof data.usage_weekly === 'number') {
+    return Math.max(0, data.usage_weekly)
+  }
+  if (reset === 'monthly' && typeof data.usage_monthly === 'number') {
+    return Math.max(0, data.usage_monthly)
+  }
+
+  if (typeof data.usage === 'number') return Math.max(0, data.usage)
+  return null
+}
+
+function keyLimitName(reset: string | null | undefined): string {
+  if (reset === 'daily') return 'dailyLimit'
+  if (reset === 'weekly') return 'weeklyLimit'
+  if (reset === 'monthly') return 'monthlyLimit'
+  return 'keyLimit'
 }
 
 function assignSpend(
