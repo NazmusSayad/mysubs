@@ -10,6 +10,9 @@
     "dev": "tsdown --config ./tsdown.config.ts --watch",
     "start": "tsx --watch ./src/index.ts"
   },
+  "bin": {
+    "mysubs": "dist/index.mjs"
+  },
   "devDependencies": {
     "@eslint/compat": "^1",
     "@eslint/eslintrc": "^3",
