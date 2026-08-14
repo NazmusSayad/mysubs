@@ -31,6 +31,7 @@ const MIN_BAR_WIDTH = 10
 const TRACK_COLOR = '#3f434d'
 const BLOCK = '█'
 const NERD_BLOCK = '󰝤'
+const CACHED_ICON = '⟳'
 
 type Row =
   | {
@@ -192,8 +193,6 @@ export function render(
 ): string {
   if (results.length === 0) return ''
 
-  const rendered = results.map((result) => ({ result, rows: rowsFor(result) }))
-
   const available = (process.stdout.columns ?? 80) - PADDING * 2
   const fullBarWidth = Math.max(
     MIN_BAR_WIDTH,
@@ -210,50 +209,42 @@ export function render(
   const pad = ' '.repeat(PADDING)
   const lines: string[] = []
 
-  for (const { result, rows: resultRows } of rendered) {
+  for (const result of results) {
     const provider = providers[result.provider]
     if (provider === undefined) {
       throw new Error(`unknown provider ${result.provider}`)
     }
 
     let head = chalk.bold.hex(provider.color)(provider.name)
-    let headWidth = provider.name.length
 
     if (result.sourceName !== undefined) {
       head += ` ${chalk.dim(result.sourceName)}`
-      headWidth += 1 + result.sourceName.length
     }
     if (result.accountInfo !== undefined) {
       head += chalk.dim(' › ') + chalk.hex(provider.color)(result.accountInfo)
-      headWidth += 3 + result.accountInfo.length
     }
     if (result.accountPlan !== undefined) {
       head += chalk.dim(` · ${result.accountPlan}`)
-      headWidth += 3 + result.accountPlan.length
     }
+
     if (result.cached) {
-      const marker = '♲ cached'
-      const spacing = Math.max(
-        BAR_MARGIN_LEFT,
-        available - headWidth - marker.length
-      )
-      head += ' '.repeat(spacing) + chalk.dim(marker)
+      head += ` ${chalk.dim(CACHED_ICON)}`
     }
 
     lines.push('')
     lines.push(pad + head)
 
-    for (const row of resultRows) {
+    for (const row of rowsFor(result)) {
       const rowLabel = row.label.padEnd(LABEL_WIDTH)
       const prefix = pad + ' '.repeat(ROW_INDENT)
 
       if (row.kind === 'bar') {
         const overflow = Math.max(0, row.label.length - LABEL_WIDTH)
         const barWidth = Math.max(MIN_BAR_WIDTH, fullBarWidth - overflow)
-        const detail =
-          row.detail === ''
-            ? ''
-            : ' '.repeat(DETAIL_GAP) + chalk.dim(row.detail)
+        let detail = ''
+        if (row.detail !== '') {
+          detail = ' '.repeat(DETAIL_GAP) + chalk.dim(row.detail)
+        }
         lines.push(
           prefix +
             rowLabel +
