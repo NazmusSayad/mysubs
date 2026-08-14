@@ -48,12 +48,6 @@ Example:
 }
 ```
 
-Usage bars run from red when little is used to green when a limit is nearly spent.
-`contrast` (0 to 1, default `0.4`) controls how strong those colors are: lower is
-calmer, `0` is plain grey, higher is more vivid.
-
-Other top-level options: `cacheTTL` (default `"1m"`) and `detect` (default `true`).
-
 ## Secrets
 
 Never put a raw API key in the config. Reference it instead, and mysubs will resolve it
