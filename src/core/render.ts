@@ -224,7 +224,7 @@ export function render(
       headWidth += 1 + result.sourceName.length
     }
     if (result.accountInfo !== undefined) {
-      head += chalk.dim(' > ') + chalk.hex(provider.color)(result.accountInfo)
+      head += chalk.dim(' › ') + chalk.hex(provider.color)(result.accountInfo)
       headWidth += 3 + result.accountInfo.length
     }
     if (result.accountPlan !== undefined) {
