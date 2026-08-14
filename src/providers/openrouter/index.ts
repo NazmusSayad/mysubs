@@ -165,17 +165,7 @@ export async function fetchOpenRouterAccount(
         const used = Math.max(0, parsed.data.total_usage)
         const total = Math.max(0, parsed.data.total_credits ?? 0)
 
-        if (total > 0) {
-          usage.credits = {
-            kind: 'consumption',
-            unit: 'usd',
-            used,
-            limit: total,
-            remaining: Math.max(0, total - used),
-            utilization: used / total,
-          }
-        }
-        usage.balance = {
+        usage.credits = {
           kind: 'balance',
           unit: 'usd',
           available: Math.max(0, total - used),

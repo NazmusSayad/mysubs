@@ -87,18 +87,37 @@ function barRow(label: string, resource: UsageResource): Row | null {
   }
 }
 
-function spendRow(usage: Record<string, UsageResource>): Row | null {
+function balanceRow(usage: Record<string, UsageResource>): Row | null {
   const parts: string[] = []
+  const credits = usage.credits
+  const value = usage.creditValue
+
+  if (credits !== undefined && credits.kind === 'balance') {
+    if (value !== undefined && value.kind === 'balance') {
+      parts.push(formatMoney(value.available))
+    }
+    if (value === undefined && credits.unit === 'usd') {
+      parts.push(formatMoney(credits.available))
+    }
+    if (value === undefined && credits.unit === 'credits') {
+      parts.push(`${String(credits.available)} credits`)
+    }
+  }
 
   for (const key of ['today', 'week', 'month']) {
     const resource = usage[key]
     if (resource === undefined) continue
     if (resource.kind !== 'consumption') continue
-    parts.push(`${key} ${formatMoney(resource.used)}`)
+    parts.push(chalk.dim(`${key} ${formatMoney(resource.used)}`))
   }
 
   if (parts.length === 0) return null
-  return { kind: 'text', label: 'spend', text: parts.join('   '), tone: 'dim' }
+  return {
+    kind: 'text',
+    label: 'balance',
+    text: parts.join(chalk.dim(' · ')),
+    tone: 'normal',
+  }
 }
 
 function rowsFor(subscription: AccountUsageResult): Row[] {
@@ -110,29 +129,13 @@ function rowsFor(subscription: AccountUsageResult): Row[] {
 
   const usage = subscription.usage ?? {}
   const rows: Row[] = []
-  const spend = spendRow(usage)
+  const balance = balanceRow(usage)
+  if (balance !== null) rows.push(balance)
 
   for (const [key, resource] of Object.entries(usage)) {
     if (key === 'today' || key === 'week' || key === 'month') continue
     if (key === 'creditValue') continue
-
-    if (key === 'balance') {
-      const credits = usage.credits
-      if (credits !== undefined && credits.kind === 'consumption') continue
-    }
-
-    if (key === 'credits' && resource.kind === 'balance') {
-      const value = usage.creditValue
-      if (value !== undefined && value.kind === 'balance') {
-        rows.push({
-          kind: 'text',
-          label: 'credits',
-          text: formatMoney(value.available),
-          tone: 'normal',
-        })
-        continue
-      }
-    }
+    if (key === 'credits' && resource.kind === 'balance') continue
 
     const bar = barRow(labelText(key), resource)
     if (bar !== null) {
@@ -156,8 +159,6 @@ function rowsFor(subscription: AccountUsageResult): Row[] {
       tone: 'normal',
     })
   }
-
-  if (spend !== null) rows.push(spend)
 
   if (rows.length === 0) {
     rows.push({ kind: 'text', label: '', text: 'no usage data', tone: 'dim' })
