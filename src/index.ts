@@ -58,6 +58,7 @@ const program = new Command('mysubs')
   .option('-s, --subs <list>', 'filter providers or accounts')
   .option('-j, --json', 'JSON-only output')
   .option('-f, --force', 'ignore cache and refetch')
+  .option('-v, --verbose', 'show sanitized provider request details')
   .action(async (options) => {
     process.exitCode = await runUsage(options)
   })

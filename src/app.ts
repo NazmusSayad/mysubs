@@ -98,7 +98,8 @@ function selectAccountTargets(
 async function resolveAccount(
   target: AccountTarget,
   ttl: number,
-  force: boolean
+  force: boolean,
+  verbose: boolean
 ): Promise<AccountUsageResult> {
   const entry = providers[target.provider]
   if (entry === undefined) {
@@ -111,7 +112,10 @@ async function resolveAccount(
     if (cached !== null) return { ...cached, cached: true }
   }
 
-  const result = await entry.fetchAccount(target.account, target.options)
+  const result = await entry.fetchAccount(target.account, {
+    ...target.options,
+    ...(verbose ? { verbose: true } : {}),
+  })
   const resolved: AccountUsageResult = {
     ...result,
     cached: false,
@@ -136,6 +140,7 @@ export async function runUsage(options: {
   subs?: string
   json?: boolean
   force?: boolean
+  verbose?: boolean
 }): Promise<number> {
   const config = loadConfig()
   const accountTargets = await collectAccountTargets(config)
@@ -163,7 +168,12 @@ export async function runUsage(options: {
     if (showProgress) stopProgress = startProgress(label)
 
     try {
-      const resolved = await resolveAccount(target, ttl, options.force === true)
+      const resolved = await resolveAccount(
+        target,
+        ttl,
+        options.force === true || options.verbose === true,
+        options.verbose === true
+      )
 
       if (stopProgress !== null) {
         stopProgress()
