@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { Command } from '@commander-js/extra-typings'
 import readline from 'node:readline'
-import { resolveAccounts, type ResolvedAccount } from './accounts'
-import { configPath, loadConfig } from './config'
-import { fetchProviderUsages } from './fetch'
-import { render } from './render'
+import { resolveAccounts, type ResolvedAccount } from './core/accounts'
+import { configPath, loadConfig } from './core/config'
+import { fetchProviderUsages } from './core/fetch'
+import { render } from './core/render'
 import { getKey, setKey } from './utils/keyring'
 
 function select(
@@ -23,14 +23,14 @@ function select(
     const account = separator === -1 ? null : token.slice(separator + 1)
 
     const matches = all.filter((target) => {
-      if (target.provider !== provider) return false
+      if (target.providerId !== provider) return false
       if (account === null) return true
       return target.name === account
     })
 
     if (matches.length === 0) {
       const configured = all
-        .map((target) => `${target.provider}:${target.name}`)
+        .map((target) => `${target.providerId}:${target.name}`)
         .join(', ')
       throw new Error(
         `no configured account matches "${token}". configured: ${configured === '' ? '(none)' : configured}`
@@ -104,17 +104,7 @@ async function runUsage(options: {
 
   if (all.length === 0) {
     process.stderr.write(
-      `no accounts configured and none detected.\n\ncreate ${configPath()}:\n\n${JSON.stringify(
-        {
-          codex: { accounts: [{ name: 'personal', configDir: '~/.codex' }] },
-          claude: { accounts: [{ name: 'personal', configDir: '~/.claude' }] },
-          openrouter: {
-            accounts: [{ name: 'personal', apiKey: 'env:OPENROUTER_API_KEY' }],
-          },
-        },
-        null,
-        2
-      )}\n`
+      `no accounts configured and none detected. create ${configPath()} to add one.\n`
     )
     return 1
   }
@@ -141,10 +131,7 @@ async function runUsage(options: {
 
 const program = new Command('mysubs')
   .description('check usage across multiple accounts')
-  .option(
-    '--subs <list>',
-    'filter providers/accounts, e.g. codex,openrouter:work'
-  )
+  .option('--subs <list>', 'filter providers or accounts')
   .option('--json', 'JSON-only output')
   .option('--force', 'ignore cache and refetch')
   .action(async (options) => {

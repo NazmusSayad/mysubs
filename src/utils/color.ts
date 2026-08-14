@@ -4,12 +4,6 @@ export const colorSchema = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, 'must be a hex color like "#72317b"')
 
-export const BRAND_COLORS: Record<string, string> = {
-  codex: '#72317b',
-  claude: '#d97757',
-  openrouter: '#6467f2',
-}
-
 function hslToHex(hue: number, saturation: number, lightness: number): string {
   const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation
   const second = chroma * (1 - Math.abs(((hue / 60) % 2) - 1))

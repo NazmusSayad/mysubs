@@ -1,20 +1,8 @@
+import { parseTTL, readCache, writeCache } from '../utils/cache'
 import type { ResolvedAccount } from './accounts'
 import type { Config } from './config'
-import { fetchClaudeUsage } from './providers/claude'
-import { fetchCodexUsage } from './providers/codex'
-import { fetchOpenRouterUsage } from './providers/openrouter'
-import { parseTTL, readCache, writeCache } from './utils/cache'
-import type { Report, Subscription } from './utils/report'
-import type { ProviderResult } from './utils/usage'
-
-function run(target: ResolvedAccount): Promise<ProviderResult> {
-  if (target.provider === 'codex') return fetchCodexUsage(target.account)
-  if (target.provider === 'claude') return fetchClaudeUsage(target.account)
-  if (target.provider === 'openrouter') {
-    return fetchOpenRouterUsage(target.account)
-  }
-  throw new Error('unknown provider')
-}
+import type { Report, Subscription } from './report'
+import type { ProviderResult } from './usage'
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
@@ -31,14 +19,14 @@ export async function fetchProviderUsages(
   const subscriptions = await Promise.all(
     accounts.map(async (target): Promise<Subscription> => {
       const base = {
-        provider: target.provider,
+        provider: target.providerId,
         account: target.name,
         named: target.named,
         source: target.source,
         color: target.color,
       }
 
-      const key = `${target.provider}:${target.name}`
+      const key = `${target.providerId}:${target.name}`
 
       if (options.force !== true) {
         const cached = readCache(key, ttl)
@@ -54,7 +42,7 @@ export async function fetchProviderUsages(
       }
 
       try {
-        const result = await run(target)
+        const result = await target.provider.fetchUsage()
         writeCache(key, result)
         return {
           ...base,

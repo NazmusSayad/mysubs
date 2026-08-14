@@ -1,14 +1,8 @@
 import { Chalk, type ChalkInstance } from 'chalk'
-import { BRAND_COLORS, generateColor } from './utils/color'
-import { formatDuration, formatMoney, formatPercent } from './utils/format'
-import type { Report, Subscription } from './utils/report'
-import type { UsageResource } from './utils/usage'
-
-const PROVIDER_TITLES: Record<string, string> = {
-  codex: 'Codex',
-  claude: 'Claude',
-  openrouter: 'OpenRouter',
-}
+import { generateColor } from '../utils/color'
+import { formatDuration, formatMoney, formatPercent } from '../utils/format'
+import type { Report, Subscription } from './report'
+import type { UsageResource } from './usage'
 
 function createChalk(): ChalkInstance {
   const noColor = process.env.NO_COLOR
@@ -175,7 +169,7 @@ function blocksFor(report: Report): Block[] {
 
     let color = subscription.color
     if (color === undefined && first) {
-      color = BRAND_COLORS[subscription.provider]
+      color = generateColor(subscription.provider)
     }
     if (color === undefined) {
       color = generateColor(`${subscription.provider}:${subscription.account}`)
@@ -235,15 +229,9 @@ export function render(report: Report): string {
     const heading = block.provider !== provider
     if (heading) {
       provider = block.provider
-      const title = PROVIDER_TITLES[block.provider] ?? block.provider
-      const brand = BRAND_COLORS[block.provider]
+      const color = generateColor(block.provider)
       lines.push('')
-      lines.push(
-        pad +
-          (brand === undefined
-            ? chalk.bold(title)
-            : chalk.bold.hex(brand)(title))
-      )
+      lines.push(pad + chalk.bold.hex(color)(block.provider))
     }
 
     if (!heading) lines.push('')

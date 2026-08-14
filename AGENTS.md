@@ -5,8 +5,8 @@ headers, authentication, and usage mapping. Confirm the result with a real API
 response. Do not guess.
 
 To add a new provider, follow the existing architecture and copy the closest
-provider. Add its config, detection, and usage fetching, then connect it to
-account resolution, fetching, and rendering.
+provider. Keep its config, detection, account client, and display details inside
+the provider, then add it to the central registry.
 
 Keep each account independent so one failure does not stop the others. Never
 store, log, or display secrets or email addresses. If the API does not provide a
