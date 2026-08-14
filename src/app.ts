@@ -185,8 +185,5 @@ export async function runUsage(options: {
     process.stdout.write(`${JSON.stringify(results, null, 2)}\n`)
   }
 
-  if (results.some((result) => result.error !== undefined)) {
-    return 1
-  }
   return 0
 }

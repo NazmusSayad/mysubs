@@ -104,7 +104,7 @@ function spendRow(usage: Record<string, UsageResource>): Row | null {
 function rowsFor(subscription: AccountUsageResult): Row[] {
   if (subscription.error !== undefined) {
     return [
-      { kind: 'text', label: 'error', text: subscription.error, tone: 'error' },
+      { kind: 'text', label: '', text: subscription.error, tone: 'error' },
     ]
   }
 
@@ -262,12 +262,7 @@ export function render(
       }
 
       if (row.tone === 'error') {
-        lines.push(
-          prefix +
-            chalk.red(rowLabel) +
-            ' '.repeat(BAR_MARGIN_LEFT) +
-            chalk.red(row.text)
-        )
+        lines.push(prefix + chalk.red(row.text))
         continue
       }
 
