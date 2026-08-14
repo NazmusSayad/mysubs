@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
+import { shortenHome } from '../../utils/path'
 import type { ProviderResult, UsageResource } from '../../utils/usage'
 import type { CodexAccount } from './config'
 
@@ -41,7 +42,6 @@ const windowSchema = z
   .nullish()
 
 const usageSchema = z.object({
-  email: z.string().nullish(),
   plan_type: z.string().nullish(),
   rate_limit: z
     .object({
@@ -167,6 +167,27 @@ function jwtExpiresAt(token: string): number | null {
     const exp = (payload as Record<string, unknown>).exp
     if (typeof exp !== 'number') return null
     return exp * 1000
+  } catch {
+    return null
+  }
+}
+
+function jwtName(token: string | null | undefined): string | null {
+  if (token === undefined || token === null || token === '') return null
+
+  const segments = token.split('.')
+  if (segments.length !== 3) return null
+
+  try {
+    const payload: unknown = JSON.parse(
+      Buffer.from(segments[1], 'base64url').toString('utf8')
+    )
+    if (typeof payload !== 'object' || payload === null) return null
+
+    const name = (payload as Record<string, unknown>).name
+    if (typeof name !== 'string') return null
+    if (name.trim() === '') return null
+    return name.trim()
   } catch {
     return null
   }
@@ -353,7 +374,13 @@ export async function fetchCodexUsage(
     throw new Error('codex usage response was not in the expected shape')
   }
 
-  return mapUsage(parsed.data, response)
+  const result = mapUsage(parsed.data, response)
+
+  const name = jwtName(state.auth.tokens?.id_token)
+  if (name !== null) result.label = name
+  if (name === null) result.label = shortenHome(account.configDir)
+
+  return result
 }
 
 function headerNumber(response: Response, name: string): number | null {
@@ -512,11 +539,6 @@ function mapUsage(
 
   const plan = formatPlan(body.plan_type)
   if (plan !== null) result.plan = plan
-
-  const email = body.email
-  if (email !== undefined && email !== null && email.trim() !== '') {
-    result.label = email.trim()
-  }
 
   return result
 }

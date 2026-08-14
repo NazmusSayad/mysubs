@@ -231,7 +231,8 @@ export function render(report: Report): string {
   let provider: string | null = null
 
   for (const block of blocks) {
-    if (block.provider !== provider) {
+    const heading = block.provider !== provider
+    if (heading) {
       provider = block.provider
       const title = PROVIDER_TITLES[block.provider] ?? block.provider
       const brand = BRAND_COLORS[block.provider]
@@ -244,32 +245,26 @@ export function render(report: Report): string {
       )
     }
 
-    lines.push('')
+    if (!heading) lines.push('')
 
-    const width = available - ACCOUNT_INDENT
     const label = block.label ?? ''
     const plan = block.plan ?? ''
 
     let head: string
-    let headWidth: number
     if (label === '') {
       head = chalk.hex(block.color)(block.name)
-      headWidth = block.name.length
     } else if (block.named) {
       head =
         chalk.hex(block.color)(block.name) + ' '.repeat(GAP) + chalk.dim(label)
-      headWidth = block.name.length + GAP + label.length
     } else {
       head = chalk.hex(block.color)(label)
-      headWidth = label.length
     }
 
-    const gap = Math.max(1, width - headWidth - plan.length)
     lines.push(
       pad +
         ' '.repeat(ACCOUNT_INDENT) +
         head +
-        (plan === '' ? '' : ' '.repeat(gap) + chalk.dim(plan))
+        (plan === '' ? '' : chalk.dim(` · ${plan}`))
     )
 
     for (const row of block.rows) {
