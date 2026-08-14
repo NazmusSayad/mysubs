@@ -44,7 +44,7 @@ export const providers: Record<string, ProviderEntry> = {
   },
   opencode: {
     name: 'OpenCode',
-    color: '#f4b942',
+    color: '#f2f0e9',
     optionsSchema: opencodeOptionsSchema,
     accountSchema: opencodeAccountSchema,
     detectDefaults: detectOpenCodeAccounts,
