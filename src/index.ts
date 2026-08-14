@@ -55,12 +55,12 @@ function readSecret(prompt: string): Promise<string> {
 
 const program = new Command('mysubs')
   .description('check usage across multiple accounts')
-  .option('-s, --subs <list>', 'filter providers or accounts')
+  .argument('[subs...]', 'filter providers or accounts')
   .option('-j, --json', 'JSON-only output')
   .option('-f, --force', 'ignore cache and refetch')
   .option('-v, --verbose', 'show sanitized provider request details')
-  .action(async (options) => {
-    process.exitCode = await runUsage(options)
+  .action(async (subs, options) => {
+    process.exitCode = await runUsage({ ...options, subs })
   })
 
 const keyCommand = program.command('key').description('manage keyring secrets')

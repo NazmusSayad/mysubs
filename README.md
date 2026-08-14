@@ -6,8 +6,9 @@ Check how much of your AI subscriptions you have used, across accounts and provi
 
 ```sh
 mysubs            # show usage for all accounts
-mysubs -s codex   # show only codex accounts
-mysubs -s codex:work  # show only the "work" codex account
+mysubs codex      # show only codex accounts
+mysubs codex:work # show only the "work" codex account
+mysubs codex claude opencode:zen # select multiple providers or accounts
 mysubs -j         # print results as JSON
 mysubs -f         # ignore the cache and fetch fresh data
 ```

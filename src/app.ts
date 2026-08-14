@@ -65,12 +65,12 @@ async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
 
 function selectAccountTargets(
   targets: AccountTarget[],
-  subs: string | undefined
+  subs: string[] | undefined
 ): AccountTarget[] {
-  if (subs === undefined) return [...targets]
+  if (subs === undefined || subs.length === 0) return [...targets]
 
   const selected: AccountTarget[] = []
-  for (const raw of subs.split(',')) {
+  for (const raw of subs) {
     const token = raw.trim()
     if (token === '') continue
 
@@ -137,7 +137,7 @@ async function resolveAccount(
 }
 
 export async function runUsage(options: {
-  subs?: string
+  subs?: string[]
   json?: boolean
   force?: boolean
   verbose?: boolean
