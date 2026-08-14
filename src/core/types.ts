@@ -35,6 +35,7 @@ export type AccountSubscriptionBalanceUsage = {
 
 export type AccountUsageResult = {
   provider: string
+  cached: boolean
   color: string
 
   sourceName?: string
