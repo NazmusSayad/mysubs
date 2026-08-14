@@ -3,7 +3,11 @@ import { Command } from '@commander-js/extra-typings'
 import readline from 'node:readline'
 import { configPath, loadConfig } from './core/config'
 import { render } from './core/render'
-import type { ProviderAccount, ProviderOptions } from './core/types'
+import type {
+  AccountUsageResult,
+  ProviderAccount,
+  ProviderOptions,
+} from './core/types'
 import { cacheKey } from './lib/crypto'
 import { getKeyringEntrySecret, setKeyringEntrySecret } from './lib/keyring'
 import { providers } from './providers'
@@ -144,43 +148,95 @@ async function runUsage(options: {
   }
 
   const ttl = parseTTL(config.cacheTTL)
-  const results = await Promise.all(
-    selectedAccountTargets.map(async (target) => {
+  const results: AccountUsageResult[] = []
+  for (const target of selectedAccountTargets) {
+    let accountLabel = target.provider
+    if (target.sourceName !== undefined) {
+      accountLabel = `${target.provider}:${target.sourceName}`
+    }
+    const showProgress = options.json !== true && process.stderr.isTTY === true
+    let spinnerFrame = 0
+    const startedAt = Date.now()
+    const spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+    const activities = [
+      'connecting',
+      'requesting usage',
+      'waiting for response',
+    ]
+    function drawProgress(): void {
+      const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000)
+      const activity =
+        activities[Math.floor(spinnerFrame / 3) % activities.length]
+      process.stderr.write(
+        `\r\u001B[2K${spinner[spinnerFrame]} ${activity} ${accountLabel} ${elapsedSeconds}s`
+      )
+      spinnerFrame = (spinnerFrame + 1) % spinner.length
+    }
+    let progress: ReturnType<typeof setInterval> | null = null
+    let progressVisible = false
+    if (showProgress) {
+      drawProgress()
+      progress = setInterval(drawProgress, 120)
+      progressVisible = true
+    }
+
+    let resolved: AccountUsageResult | null = null
+    try {
       const key = cacheKey(target.provider, target.account)
       if (key !== null && target.options.cache && options.force !== true) {
         const cached = readCache(key, target.provider)
-        if (cached !== null) return cached
-      }
-
-      const result = await providers[target.provider].fetchAccount(
-        target.account,
-        target.options
-      )
-      const resolved = {
-        ...result,
-        ...(target.sourceName === undefined
-          ? {}
-          : { sourceName: target.sourceName }),
-        ...(target.sourceType === undefined
-          ? {}
-          : { sourceType: target.sourceType }),
-      }
-
-      if (key !== null && target.options.cache && result.error === undefined) {
-        try {
-          writeCache(key, Date.now() + ttl, resolved)
-        } catch {
-          return resolved
+        if (cached !== null) {
+          resolved = cached
         }
       }
-      return resolved
-    })
-  )
+
+      if (resolved === null) {
+        const result = await providers[target.provider].fetchAccount(
+          target.account,
+          target.options
+        )
+        resolved = {
+          ...result,
+          ...(target.sourceName === undefined
+            ? {}
+            : { sourceName: target.sourceName }),
+          ...(target.sourceType === undefined
+            ? {}
+            : { sourceType: target.sourceType }),
+        }
+
+        if (
+          key !== null &&
+          target.options.cache &&
+          result.error === undefined
+        ) {
+          try {
+            writeCache(key, Date.now() + ttl, resolved)
+          } catch {}
+        }
+      }
+
+      if (progress !== null) {
+        clearInterval(progress)
+        progress = null
+      }
+      if (progressVisible) {
+        process.stderr.write('\r\u001B[2K')
+        progressVisible = false
+      }
+
+      results.push(resolved)
+      if (options.json !== true) {
+        process.stdout.write(`${render([resolved])}\n`)
+      }
+    } finally {
+      if (progress !== null) clearInterval(progress)
+      if (progressVisible) process.stderr.write('\r\u001B[2K')
+    }
+  }
 
   if (options.json === true) {
     process.stdout.write(`${JSON.stringify(results, null, 2)}\n`)
-  } else {
-    process.stdout.write(`${render(results)}\n`)
   }
 
   if (results.some((result) => result.error !== undefined)) {
