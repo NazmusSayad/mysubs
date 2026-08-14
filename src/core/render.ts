@@ -166,10 +166,17 @@ function drawBar(row: Row, width: number, color: string): string {
   )
 }
 
-export function render(results: AccountUsageResult[]): string {
+// Column widths are measured across the results of a single call. Callers that
+// stream one account at a time therefore align columns within an account but not
+// between accounts; aligning globally would require buffering every account.
+export function render(
+  results: AccountUsageResult[],
+  previousProvider: string | null = null
+): string {
   if (results.length === 0) return ''
 
-  const rows = results.flatMap(rowsFor)
+  const rendered = results.map((result) => ({ result, rows: rowsFor(result) }))
+  const rows = rendered.flatMap((entry) => entry.rows)
   const labelWidth = Math.max(...rows.map((row) => row.label.length))
   const bars = rows.filter((row) => row.kind === 'bar')
 
@@ -190,9 +197,9 @@ export function render(results: AccountUsageResult[]): string {
 
   const pad = ' '.repeat(PADDING)
   const lines: string[] = []
-  let provider: string | null = null
+  let provider = previousProvider
 
-  for (const result of results) {
+  for (const { result, rows: resultRows } of rendered) {
     const heading = result.provider !== provider
     if (heading) {
       provider = result.provider
@@ -224,8 +231,8 @@ export function render(results: AccountUsageResult[]): string {
         cacheStatus
     )
 
-    for (const row of rowsFor(result)) {
-      const label = row.label.padEnd(labelWidth)
+    for (const row of resultRows) {
+      const rowLabel = row.label.padEnd(labelWidth)
       const prefix = pad + ' '.repeat(ROW_INDENT)
 
       if (row.kind === 'bar') {
@@ -233,7 +240,7 @@ export function render(results: AccountUsageResult[]): string {
           row.detail === '' ? '' : ' '.repeat(GAP) + chalk.dim(row.detail)
         lines.push(
           prefix +
-            label +
+            rowLabel +
             ' '.repeat(GAP) +
             drawBar(row, barWidth, result.color) +
             ' '.repeat(GAP) +
@@ -245,17 +252,17 @@ export function render(results: AccountUsageResult[]): string {
 
       if (row.tone === 'error') {
         lines.push(
-          prefix + chalk.red(label) + ' '.repeat(GAP) + chalk.red(row.text)
+          prefix + chalk.red(rowLabel) + ' '.repeat(GAP) + chalk.red(row.text)
         )
         continue
       }
 
       if (row.tone === 'dim') {
-        lines.push(prefix + label + ' '.repeat(GAP) + chalk.dim(row.text))
+        lines.push(prefix + rowLabel + ' '.repeat(GAP) + chalk.dim(row.text))
         continue
       }
 
-      lines.push(prefix + label + ' '.repeat(GAP) + row.text)
+      lines.push(prefix + rowLabel + ' '.repeat(GAP) + row.text)
     }
   }
 

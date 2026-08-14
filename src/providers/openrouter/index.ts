@@ -11,6 +11,7 @@ import { openrouterAccountSchema } from './config'
 
 const CREDITS_URL = 'https://openrouter.ai/api/v1/credits'
 const KEY_URL = 'https://openrouter.ai/api/v1/key'
+const DEFAULT_COLOR = '#6467f2'
 
 const creditsSchema = z.object({
   total_credits: z.number().nullish(),
@@ -218,7 +219,7 @@ export async function fetchOpenRouterAccount(
       const result: AccountUsageResult = {
         provider: 'openrouter',
         cached: false,
-        color: parsedAccount.color ?? '#6467f2',
+        color: parsedAccount.color ?? DEFAULT_COLOR,
         usage,
       }
       if (accountPlan !== null) result.accountPlan = accountPlan
@@ -236,7 +237,7 @@ export async function fetchOpenRouterAccount(
     return {
       provider: 'openrouter',
       cached: false,
-      color: typeof account.color === 'string' ? account.color : '#6467f2',
+      color: typeof account.color === 'string' ? account.color : DEFAULT_COLOR,
       error: error instanceof Error ? error.message : String(error),
     }
   }

@@ -1,4 +1,4 @@
-import { configPath, loadConfig } from './core/config'
+import { configPath, loadConfig, type Config } from './core/config'
 import { render } from './core/render'
 import type {
   AccountUsageResult,
@@ -8,36 +8,38 @@ import type {
 import { cacheKey } from './lib/crypto'
 import { providers } from './providers'
 import { parseTTL, readCache, writeCache } from './utils/cache'
+import { startProgress } from './utils/progress'
 
-export async function runUsage(options: {
-  subs?: string
-  json?: boolean
-  force?: boolean
-}): Promise<number> {
-  const config = loadConfig()
-  const accountTargets: {
-    provider: string
-    account: ProviderAccount
-    options: ProviderOptions
-    sourceName?: string
-    sourceType?: 'manual'
-  }[] = []
+type AccountTarget = {
+  provider: string
+  account: ProviderAccount
+  options: ProviderOptions
+  sourceName?: string
+  sourceType?: 'manual'
+}
+
+async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
+  const targets: AccountTarget[] = []
 
   for (const [provider, entry] of Object.entries(providers)) {
-    const configuredAccountNames = new Set<string>()
+    const options = config.options[provider]
+    if (options === undefined) {
+      throw new Error(`no options were loaded for provider ${provider}`)
+    }
 
+    const configuredNames = new Set<string>()
     for (const account of config.accounts[provider] ?? []) {
       const name = account.name
       if (typeof name === 'string') {
-        if (configuredAccountNames.has(name)) {
+        if (configuredNames.has(name)) {
           throw new Error(`duplicate ${provider} account name: ${name}`)
         }
-        configuredAccountNames.add(name)
+        configuredNames.add(name)
       }
-      accountTargets.push({
+      targets.push({
         provider,
         account,
-        options: config.options[provider],
+        options,
         ...(typeof name === 'string' ? { sourceName: name } : {}),
         sourceType: 'manual',
       })
@@ -48,16 +50,95 @@ export async function runUsage(options: {
     try {
       const detected = await entry.detectDefaults()
       for (const account of detected) {
-        accountTargets.push({
-          provider,
-          account,
-          options: config.options[provider],
-        })
+        targets.push({ provider, account, options })
       }
-    } catch {
-      continue
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      process.stderr.write(
+        `mysubs: could not detect ${provider} accounts: ${reason}\n`
+      )
     }
   }
+
+  return targets
+}
+
+function selectAccountTargets(
+  targets: AccountTarget[],
+  subs: string | undefined
+): AccountTarget[] {
+  if (subs === undefined) return [...targets]
+
+  const selected: AccountTarget[] = []
+  for (const raw of subs.split(',')) {
+    const token = raw.trim()
+    if (token === '') continue
+
+    const separator = token.indexOf(':')
+    const provider = separator === -1 ? token : token.slice(0, separator)
+    const account = separator === -1 ? null : token.slice(separator + 1)
+
+    const matches = targets.filter((target) => {
+      if (target.provider !== provider) return false
+      if (account === null) return true
+      return target.sourceName === account
+    })
+
+    if (matches.length === 0) {
+      throw new Error(`no configured account matches "${token}"`)
+    }
+    for (const match of matches) {
+      if (!selected.includes(match)) selected.push(match)
+    }
+  }
+
+  return selected
+}
+
+async function resolveAccount(
+  target: AccountTarget,
+  ttl: number,
+  force: boolean
+): Promise<AccountUsageResult> {
+  const entry = providers[target.provider]
+  if (entry === undefined) {
+    throw new Error(`unknown provider ${target.provider}`)
+  }
+
+  const key = cacheKey(target.provider, target.account)
+  if (key !== null && target.options.cache && !force) {
+    const cached = readCache(key, target.provider)
+    if (cached !== null) return { ...cached, cached: true }
+  }
+
+  const result = await entry.fetchAccount(target.account, target.options)
+  const resolved: AccountUsageResult = {
+    ...result,
+    cached: false,
+    ...(target.sourceName === undefined
+      ? {}
+      : { sourceName: target.sourceName }),
+    ...(target.sourceType === undefined
+      ? {}
+      : { sourceType: target.sourceType }),
+  }
+
+  if (key !== null && target.options.cache && result.error === undefined) {
+    try {
+      writeCache(key, Date.now() + ttl, resolved)
+    } catch {}
+  }
+
+  return resolved
+}
+
+export async function runUsage(options: {
+  subs?: string
+  json?: boolean
+  force?: boolean
+}): Promise<number> {
+  const config = loadConfig()
+  const accountTargets = await collectAccountTargets(config)
 
   if (accountTargets.length === 0) {
     process.stderr.write(
@@ -66,120 +147,37 @@ export async function runUsage(options: {
     return 1
   }
 
-  const selectedAccountTargets = [] as typeof accountTargets
-  if (options.subs === undefined) {
-    selectedAccountTargets.push(...accountTargets)
-  } else {
-    for (const raw of options.subs.split(',')) {
-      const token = raw.trim()
-      if (token === '') continue
-
-      const separator = token.indexOf(':')
-      const provider = separator === -1 ? token : token.slice(0, separator)
-      const account = separator === -1 ? null : token.slice(separator + 1)
-      const matches = accountTargets.filter((target) => {
-        if (target.provider !== provider) return false
-        if (account === null) return true
-        return target.sourceName === account
-      })
-
-      if (matches.length === 0) {
-        throw new Error(`no configured account matches "${token}"`)
-      }
-      for (const match of matches) {
-        if (!selectedAccountTargets.includes(match)) {
-          selectedAccountTargets.push(match)
-        }
-      }
-    }
-  }
-
+  const selected = selectAccountTargets(accountTargets, options.subs)
   const ttl = parseTTL(config.cacheTTL)
+  const showProgress = options.json !== true && process.stderr.isTTY === true
+
   const results: AccountUsageResult[] = []
-  for (const target of selectedAccountTargets) {
-    let accountLabel = target.provider
+  let previousProvider: string | null = null
+
+  for (const target of selected) {
+    let label = target.provider
     if (target.sourceName !== undefined) {
-      accountLabel = `${target.provider}:${target.sourceName}`
-    }
-    const showProgress = options.json !== true && process.stderr.isTTY === true
-    let spinnerFrame = 0
-    const startedAt = Date.now()
-    const spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-    const activities = [
-      'connecting',
-      'requesting usage',
-      'waiting for response',
-    ]
-    function drawProgress(): void {
-      const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000)
-      const activity =
-        activities[Math.floor(spinnerFrame / 3) % activities.length]
-      process.stderr.write(
-        `\r\u001B[2K${spinner[spinnerFrame]} ${activity} ${accountLabel} ${elapsedSeconds}s`
-      )
-      spinnerFrame = (spinnerFrame + 1) % spinner.length
-    }
-    let progress: ReturnType<typeof setInterval> | null = null
-    let progressVisible = false
-    if (showProgress) {
-      drawProgress()
-      progress = setInterval(drawProgress, 120)
-      progressVisible = true
+      label = `${target.provider}:${target.sourceName}`
     }
 
-    let resolved: AccountUsageResult | null = null
+    let stopProgress: (() => void) | null = null
+    if (showProgress) stopProgress = startProgress(label)
+
     try {
-      const key = cacheKey(target.provider, target.account)
-      if (key !== null && target.options.cache && options.force !== true) {
-        const cached = readCache(key, target.provider)
-        if (cached !== null) {
-          resolved = { ...cached, cached: true }
-        }
-      }
+      const resolved = await resolveAccount(target, ttl, options.force === true)
 
-      if (resolved === null) {
-        const result = await providers[target.provider].fetchAccount(
-          target.account,
-          target.options
-        )
-        resolved = {
-          ...result,
-          cached: false,
-          ...(target.sourceName === undefined
-            ? {}
-            : { sourceName: target.sourceName }),
-          ...(target.sourceType === undefined
-            ? {}
-            : { sourceType: target.sourceType }),
-        }
-
-        if (
-          key !== null &&
-          target.options.cache &&
-          result.error === undefined
-        ) {
-          try {
-            writeCache(key, Date.now() + ttl, resolved)
-          } catch {}
-        }
-      }
-
-      if (progress !== null) {
-        clearInterval(progress)
-        progress = null
-      }
-      if (progressVisible) {
-        process.stderr.write('\r\u001B[2K')
-        progressVisible = false
+      if (stopProgress !== null) {
+        stopProgress()
+        stopProgress = null
       }
 
       results.push(resolved)
       if (options.json !== true) {
-        process.stdout.write(`${render([resolved])}\n`)
+        process.stdout.write(`${render([resolved], previousProvider)}\n`)
       }
+      previousProvider = resolved.provider
     } finally {
-      if (progress !== null) clearInterval(progress)
-      if (progressVisible) process.stderr.write('\r\u001B[2K')
+      if (stopProgress !== null) stopProgress()
     }
   }
 

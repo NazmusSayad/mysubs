@@ -23,7 +23,14 @@ export function configPath(): string {
   return path.join(os.homedir(), '.config', 'mysubs', 'config.json')
 }
 
-export function loadConfig() {
+export type Config = {
+  cacheTTL: number | string
+  detect: boolean
+  accounts: Record<string, ProviderAccount[]>
+  options: Record<string, ProviderOptions>
+}
+
+export function loadConfig(): Config {
   const file = configPath()
   let raw: unknown = {}
 
@@ -52,39 +59,14 @@ export function loadConfig() {
     }
 
     const configured = providerConfig.data.accounts
-    accounts[provider] = []
+    if (configured === undefined) {
+      accounts[provider] = []
+    }
     if (configured !== undefined) {
-      const parsedAccounts = z.array(entry.accountSchema).parse(configured)
-      for (const parsedAccount of parsedAccounts) {
-        if (
-          typeof parsedAccount !== 'object' ||
-          parsedAccount === null ||
-          Array.isArray(parsedAccount) ||
-          !('__type' in parsedAccount) ||
-          parsedAccount.__type !== 'account'
-        ) {
-          throw new Error(`${file} is invalid`)
-        }
-        accounts[provider].push({ ...parsedAccount, __type: 'account' })
-      }
+      accounts[provider] = z.array(entry.accountSchema).parse(configured)
     }
-    const parsedOptions = entry.optionsSchema.parse(providerConfig.data)
-    if (
-      typeof parsedOptions !== 'object' ||
-      parsedOptions === null ||
-      Array.isArray(parsedOptions) ||
-      !('cache' in parsedOptions) ||
-      typeof parsedOptions.cache !== 'boolean' ||
-      !('__type' in parsedOptions) ||
-      parsedOptions.__type !== 'options'
-    ) {
-      throw new Error(`${file} is invalid`)
-    }
-    options[provider] = {
-      ...parsedOptions,
-      cache: parsedOptions.cache,
-      __type: 'options',
-    }
+
+    options[provider] = entry.optionsSchema.parse(providerConfig.data)
   }
 
   return {

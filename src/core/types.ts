@@ -52,8 +52,8 @@ export type AccountUsageResult = {
 }
 
 export type ProviderEntry = {
-  optionsSchema: z.ZodType
-  accountSchema: z.ZodType
+  optionsSchema: z.ZodType<ProviderOptions>
+  accountSchema: z.ZodType<ProviderAccount>
   detectDefaults: () => Promise<ProviderAccount[]>
   fetchAccount: (
     account: ProviderAccount,

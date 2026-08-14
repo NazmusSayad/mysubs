@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { secretRefSchema } from '../../lib/secret'
-import { colorSchema } from '../../utils/color'
+import { colorSchema } from '../../lib/color'
 
 export const openrouterAccountSchema = z.object({
   name: z.string().min(1).optional(),

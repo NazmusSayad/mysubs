@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { colorSchema } from '../../utils/color'
+import { colorSchema } from '../../lib/color'
 
 export const claudeAccountSchema = z.object({
   name: z.string().min(1).optional(),

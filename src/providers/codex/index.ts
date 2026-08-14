@@ -23,6 +23,7 @@ const LAST_REFRESH_MAX_AGE_MS = 8 * 24 * 60 * 60 * 1000
 const SESSION_WINDOW_SECONDS = 18000
 const WEEKLY_WINDOW_SECONDS = 604800
 const CREDIT_USD_RATE = 0.04
+const DEFAULT_COLOR = '#72317b'
 
 const authSchema = z.object({
   auth_mode: z.string().nullish(),
@@ -174,9 +175,12 @@ function jwtExpiresAt(token: string): number | null {
   const segments = token.split('.')
   if (segments.length !== 3) return null
 
+  const payloadSegment = segments[1]
+  if (payloadSegment === undefined) return null
+
   try {
     const payload: unknown = JSON.parse(
-      Buffer.from(segments[1], 'base64url').toString('utf8')
+      Buffer.from(payloadSegment, 'base64url').toString('utf8')
     )
     if (typeof payload !== 'object' || payload === null) return null
 
@@ -194,9 +198,12 @@ function jwtName(token: string | null | undefined): string | null {
   const segments = token.split('.')
   if (segments.length !== 3) return null
 
+  const payloadSegment = segments[1]
+  if (payloadSegment === undefined) return null
+
   try {
     const payload: unknown = JSON.parse(
-      Buffer.from(segments[1], 'base64url').toString('utf8')
+      Buffer.from(payloadSegment, 'base64url').toString('utf8')
     )
     if (typeof payload !== 'object' || payload === null) return null
 
@@ -556,7 +563,7 @@ function mapUsage(
   const result: AccountUsageResult = {
     provider: 'codex',
     cached: false,
-    color: account.color ?? '#72317b',
+    color: account.color ?? DEFAULT_COLOR,
     usage,
   }
 
@@ -626,7 +633,7 @@ export async function fetchCodexAccount(
     return {
       provider: 'codex',
       cached: false,
-      color: typeof account.color === 'string' ? account.color : '#72317b',
+      color: typeof account.color === 'string' ? account.color : DEFAULT_COLOR,
       error: error instanceof Error ? error.message : String(error),
     }
   }

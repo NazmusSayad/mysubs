@@ -31,7 +31,13 @@ export function parseTTL(value: number | string): number {
     return value
   }
 
-  const parsed = ms(value as StringValue)
+  let parsed: number | undefined
+  try {
+    parsed = ms(value as StringValue)
+  } catch {
+    throw new Error(`invalid cacheTTL: "${value}"`)
+  }
+
   if (typeof parsed !== 'number' || !Number.isFinite(parsed) || parsed < 0) {
     throw new Error(`invalid cacheTTL: "${value}"`)
   }

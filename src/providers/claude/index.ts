@@ -29,6 +29,7 @@ const BETA_HEADER = 'oauth-2025-04-20'
 const USER_AGENT = 'claude-code/2.1.69'
 const REFRESH_WINDOW_MS = 5 * 60 * 1000
 const CENTS_PER_USD = 100
+const DEFAULT_COLOR = '#d97757'
 
 const oauthSchema = z.object({
   accessToken: z.string().nullish(),
@@ -443,7 +444,7 @@ function mapUsage(
   return {
     provider: 'claude',
     cached: false,
-    color: color ?? '#d97757',
+    color: color ?? DEFAULT_COLOR,
     usage,
   }
 }
@@ -517,7 +518,7 @@ export async function fetchClaudeAccount(
     return {
       provider: 'claude',
       cached: false,
-      color: typeof account.color === 'string' ? account.color : '#d97757',
+      color: typeof account.color === 'string' ? account.color : DEFAULT_COLOR,
       error: error instanceof Error ? error.message : String(error),
     }
   }

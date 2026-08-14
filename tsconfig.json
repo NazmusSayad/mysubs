@@ -4,14 +4,12 @@
     "module": "ESNext",
     "declaration": true,
     "outDir": "dist",
-    "jsx": "react-jsx",
-    "jsxImportSource": "react",
     "strict": true,
+    "noUncheckedIndexedAccess": true,
     "noEmit": true,
     "moduleResolution": "bundler",
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "paths": { "@/*": ["./src/*"] }
+    "skipLibCheck": true
   },
   "include": ["src"]
 }
