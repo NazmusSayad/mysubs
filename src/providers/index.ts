@@ -1,35 +1,34 @@
-import { z } from 'zod'
-import type { BaseProvider } from '../core/provider'
-import { ClaudeProvider } from './claude'
-import { claudeAccountSchema } from './claude/config'
+import type { ProviderEntry } from '../core/provider'
+import { fetchClaudeAccount } from './claude'
+import { claudeAccountSchema, claudeOptionsSchema } from './claude/config'
 import { detectClaudeAccounts } from './claude/detect'
-import { CodexProvider } from './codex'
-import { codexAccountSchema } from './codex/config'
+import { fetchCodexAccount } from './codex'
+import { codexAccountSchema, codexOptionsSchema } from './codex/config'
 import { detectCodexAccounts } from './codex/detect'
-import { OpenRouterProvider } from './openrouter'
-import { openrouterAccountSchema } from './openrouter/config'
+import { fetchOpenRouterAccount } from './openrouter'
+import {
+  openrouterAccountSchema,
+  openrouterOptionsSchema,
+} from './openrouter/config'
 import { detectOpenRouterAccounts } from './openrouter/detect'
-
-type ProviderEntry = {
-  accountSchema: z.ZodType
-  Provider: typeof BaseProvider
-  detectDefaultAccounts: () => unknown[]
-}
 
 export const providers: Record<string, ProviderEntry> = {
   codex: {
-    Provider: CodexProvider,
+    optionsSchema: codexOptionsSchema,
     accountSchema: codexAccountSchema,
-    detectDefaultAccounts: detectCodexAccounts,
+    detectDefaults: detectCodexAccounts,
+    fetchAccount: fetchCodexAccount,
   },
   claude: {
-    Provider: ClaudeProvider,
+    optionsSchema: claudeOptionsSchema,
     accountSchema: claudeAccountSchema,
-    detectDefaultAccounts: detectClaudeAccounts,
+    detectDefaults: detectClaudeAccounts,
+    fetchAccount: fetchClaudeAccount,
   },
   openrouter: {
-    Provider: OpenRouterProvider,
+    optionsSchema: openrouterOptionsSchema,
     accountSchema: openrouterAccountSchema,
-    detectDefaultAccounts: detectOpenRouterAccounts,
+    detectDefaults: detectOpenRouterAccounts,
+    fetchAccount: fetchOpenRouterAccount,
   },
 }
