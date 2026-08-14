@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { providerBaseOptions } from '../../core/schema'
 
 export const claudeAccountSchema = z.object({
   name: z.string().min(1).optional(),
@@ -6,7 +7,4 @@ export const claudeAccountSchema = z.object({
   __type: z.literal('account').default('account'),
 })
 
-export const claudeOptionsSchema = z.object({
-  cache: z.boolean().default(true),
-  __type: z.literal('options').default('options'),
-})
+export const claudeOptionsSchema = providerBaseOptions.extend({})

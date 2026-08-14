@@ -7,18 +7,16 @@ const commonAccountSchema = {
   __type: z.literal('account').default('account'),
 }
 
-export const opencodeAccountSchema = z.discriminatedUnion('product', [
+export const copilotAccountSchema = z.discriminatedUnion('source', [
   z.object({
     ...commonAccountSchema,
-    product: z.literal('go'),
-    apiKey: secretRefSchema,
+    source: z.literal('token'),
+    token: secretRefSchema,
   }),
   z.object({
     ...commonAccountSchema,
-    product: z.literal('zen'),
-    cookie: secretRefSchema,
-    workspaceID: z.string().min(1).optional(),
+    source: z.literal('gh'),
   }),
 ])
 
-export const opencodeOptionsSchema = providerBaseOptions.extend({})
+export const copilotOptionsSchema = providerBaseOptions.extend({})

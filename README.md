@@ -6,8 +6,9 @@ Check how much of your AI subscriptions you have used, across accounts and provi
 
 ```sh
 mysubs            # show usage for all accounts
-mysubs -s codex   # show only codex accounts
-mysubs -s codex:work  # show only the "work" codex account
+mysubs codex      # show only codex accounts
+mysubs codex:work # show only the "work" codex account
+mysubs codex claude opencode:zen # select multiple providers or accounts
 mysubs -j         # print results as JSON
 mysubs -f         # ignore the cache and fetch fresh data
 ```
@@ -33,22 +34,39 @@ Example:
   "nerdFont": true,
   "maxWidth": 120,
   "codex": {
-    "accounts": [{ "name": "work", "configDir": "~/.config/codex" }]
+    "accounts": {
+      "work": { "name": "Work", "configDir": "~/.config/codex" }
+    }
   },
   "claude": {
-    "accounts": [{ "name": "personal", "configDir": "~/.claude" }]
+    "accounts": {
+      "personal": { "configDir": "~/.claude" }
+    }
   },
   "openrouter": {
-    "accounts": [{ "name": "main", "apiKey": "env:OPENROUTER_API_KEY" }]
+    "accounts": {
+      "main": { "apiKey": "env:OPENROUTER_API_KEY" }
+    }
   },
   "opencode": {
-    "accounts": [
-      { "name": "go", "product": "go", "apiKey": "env:OPENCODE_API_KEY" },
-      { "name": "zen", "product": "zen", "cookie": "key:opencode-zen" }
-    ]
+    "accounts": {
+      "go": { "product": "go", "apiKey": "env:OPENCODE_API_KEY" },
+      "zen": { "product": "zen", "cookie": "key:opencode-zen" }
+    }
+  },
+  "copilot": {
+    "accounts": {
+      "cli": { "source": "gh" },
+      "work": { "source": "token", "token": "key:copilot-work" }
+    }
   }
 }
 ```
+
+Account keys select the account, such as `mysubs codex:work`; `name` is an
+optional display name. Set `detect` inside an individual provider to `false` to skip automatic account
+detection for that provider. The root `detect` setting still disables detection
+for every provider.
 
 ## Secrets
 
@@ -65,3 +83,18 @@ mysubs key get openrouter   # prints the stored secret
 
 OpenCode Go uses an API key. Zen usage requires an authenticated `Cookie` header
 from `opencode.ai`; optionally set `workspaceID` to select a specific workspace.
+
+## GitHub Copilot
+
+Copilot reads a GitHub token. Detection uses `GITHUB_TOKEN`, then `GH_TOKEN`, and
+falls back to `gh auth token` when the GitHub CLI is installed and signed in, so
+`gh auth login` is usually all the setup you need.
+
+To configure it explicitly, set `source` on the account:
+
+- `"source": "gh"` — run `gh auth token` at fetch time
+- `"source": "token"` — resolve `token` from an env var or the keyring
+
+Paid plans meter AI credits, shown as `credits`. Chat and completions are
+unlimited there and stay hidden; on the free plan they show instead. Org-managed
+Business/Enterprise seats report no per-seat quota, so only the plan is shown.

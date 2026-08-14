@@ -30,7 +30,7 @@ export type Config = {
   contrast: number
   nerdFont: boolean
   maxWidth: number
-  accounts: Record<string, ProviderAccount[]>
+  accounts: Record<string, Record<string, ProviderAccount>>
   options: Record<string, ProviderOptions>
 }
 
@@ -51,7 +51,7 @@ export function loadConfig(): Config {
     throw new Error(`${file} is invalid`)
   }
 
-  const accounts: Record<string, ProviderAccount[]> = {}
+  const accounts: Config['accounts'] = {}
   const options: Record<string, ProviderOptions> = {}
 
   for (const [provider, entry] of Object.entries(providers)) {
@@ -64,10 +64,13 @@ export function loadConfig(): Config {
 
     const configured = providerConfig.data.accounts
     if (configured === undefined) {
-      accounts[provider] = []
+      accounts[provider] = {}
     }
     if (configured !== undefined) {
-      accounts[provider] = z.array(entry.accountSchema).parse(configured)
+      const parsedAccounts = z
+        .record(z.string().min(1), entry.accountSchema)
+        .parse(configured)
+      accounts[provider] = parsedAccounts
     }
 
     options[provider] = entry.optionsSchema.parse(providerConfig.data)

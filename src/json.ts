@@ -67,7 +67,10 @@ for (const [name, entry] of Object.entries(providers)) {
     type: 'object',
     properties: {
       ...optionProperties,
-      accounts: { type: 'array', items: account },
+      accounts: {
+        type: 'object',
+        additionalProperties: account,
+      },
     },
   }
 }

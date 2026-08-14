@@ -28,8 +28,6 @@ const SCOPES =
 const BETA_HEADER = 'oauth-2025-04-20'
 const USER_AGENT = 'claude-code/2.1.69'
 const REFRESH_WINDOW_MS = 5 * 60 * 1000
-const CENTS_PER_USD = 100
-
 const oauthSchema = z.object({
   accessToken: z.string().nullish(),
   refreshToken: z.string().nullish(),
@@ -55,13 +53,6 @@ const usageSchema = z.object({
   seven_day_opus: windowSchema,
   seven_day_sonnet: windowSchema,
   limits: z.array(z.unknown()).nullish(),
-  extra_usage: z
-    .object({
-      is_enabled: z.boolean().nullish(),
-      used_credits: z.number().nullish(),
-      monthly_limit: z.number().nullish(),
-    })
-    .nullish(),
 })
 
 type Oauth = z.infer<typeof oauthSchema>
@@ -254,7 +245,17 @@ function errorMessage(error: unknown): string {
   return String(error)
 }
 
-function requestUsage(accessToken: string): Promise<Response> {
+function requestUsage(
+  accessToken: string,
+  verbose: boolean
+): Promise<Response> {
+  if (verbose) {
+    process.stderr.write(
+      `mysubs: claude request: GET ${USAGE_URL}\n` +
+        `mysubs: claude request headers: Authorization: Bearer [redacted], Accept: application/json, anthropic-beta: ${BETA_HEADER}, User-Agent: ${USER_AGENT}\n`
+    )
+  }
+
   return fetch(USAGE_URL, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -279,7 +280,8 @@ function rateLimitMessage(response: Response): string {
 }
 
 async function fetchUsage(
-  account: z.infer<typeof claudeAccountSchema>
+  account: z.infer<typeof claudeAccountSchema>,
+  verbose: boolean
 ): Promise<AccountUsageResult> {
   const state = loadAuth(account.configDir)
 
@@ -292,10 +294,18 @@ async function fetchUsage(
     accessToken = await refreshAccessToken(state)
   }
 
-  let response = await requestUsage(accessToken)
+  let response = await requestUsage(accessToken, verbose)
+  if (verbose) {
+    process.stderr.write(`mysubs: claude response status: ${response.status}\n`)
+  }
   if (response.status === 401 || response.status === 403) {
     accessToken = await refreshAccessToken(state)
-    response = await requestUsage(accessToken)
+    response = await requestUsage(accessToken, verbose)
+    if (verbose) {
+      process.stderr.write(
+        `mysubs: claude response status: ${response.status}\n`
+      )
+    }
     if (response.status === 401 || response.status === 403) {
       throw new Error('session expired, run `claude` to log in again')
     }
@@ -310,7 +320,14 @@ async function fetchUsage(
     )
   }
 
-  const parsed = usageSchema.safeParse(await response.json())
+  const body = await response.json()
+  if (verbose) {
+    process.stderr.write(
+      `mysubs: claude response body: ${JSON.stringify(redactVerboseValue(body))}\n`
+    )
+  }
+
+  const parsed = usageSchema.safeParse(body)
   if (!parsed.success) {
     throw new Error('claude usage response was not in the expected shape')
   }
@@ -327,6 +344,27 @@ async function fetchUsage(
   if (label !== null) result.accountInfo = label
 
   return result
+}
+
+function redactVerboseValue(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return value.replace(
+      /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,
+      '[redacted]'
+    )
+  }
+  if (Array.isArray(value)) return value.map(redactVerboseValue)
+  if (typeof value !== 'object' || value === null) return value
+
+  const fields: Record<string, unknown> = {}
+  for (const [key, field] of Object.entries(value)) {
+    if (/authorization|cookie|email|password|secret|token/i.test(key)) {
+      fields[key] = '[redacted]'
+      continue
+    }
+    fields[key] = redactVerboseValue(field)
+  }
+  return fields
 }
 
 function resetTime(value: string | number | null | undefined): string | null {
@@ -411,32 +449,6 @@ function mapUsage(body: z.infer<typeof usageSchema>): AccountUsageResult {
   assignWindow(usage, 'sonnet', body.seven_day_sonnet)
   assignScopedLimits(usage, body.limits ?? [])
 
-  const extra = body.extra_usage
-  if (
-    extra !== undefined &&
-    extra !== null &&
-    extra.is_enabled === true &&
-    typeof extra.used_credits === 'number'
-  ) {
-    const used = Math.max(0, extra.used_credits) / CENTS_PER_USD
-    const limit = extra.monthly_limit
-
-    if (typeof limit === 'number' && limit > 0) {
-      const total = limit / CENTS_PER_USD
-      usage.extraUsage = {
-        kind: 'consumption',
-        unit: 'usd',
-        used,
-        limit: total,
-        remaining: Math.max(0, total - used),
-        utilization: used / total,
-      }
-    }
-    if (typeof limit !== 'number' || limit <= 0) {
-      usage.extraUsage = { kind: 'consumption', unit: 'usd', used }
-    }
-  }
-
   return {
     provider: 'claude',
     cached: false,
@@ -505,10 +517,13 @@ export async function fetchClaudeAccount(
 ): Promise<AccountUsageResult> {
   try {
     const parsed = claudeAccountSchema.parse(account)
-    return await fetchUsage({
-      ...parsed,
-      configDir: expandHome(parsed.configDir),
-    })
+    return await fetchUsage(
+      {
+        ...parsed,
+        configDir: expandHome(parsed.configDir),
+      },
+      _options.verbose === true
+    )
   } catch (error) {
     return {
       provider: 'claude',
