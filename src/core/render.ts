@@ -192,7 +192,7 @@ export function render(
   contrast: number,
   nerdFont: boolean,
   maxWidth: number,
-  leadingNewline: boolean = true
+  accountIndex: number = 0
 ): string {
   if (results.length === 0) return ''
 
@@ -213,7 +213,7 @@ export function render(
   const pad = ' '.repeat(PADDING)
   const lines: string[] = []
 
-  for (const [index, result] of results.entries()) {
+  for (const [resultIndex, result] of results.entries()) {
     const provider = providers[result.provider]
     if (provider === undefined) {
       throw new Error(`unknown provider ${result.provider}`)
@@ -235,7 +235,8 @@ export function render(
       head += ` ${chalk.dim(CACHED_ICON)}`
     }
 
-    if (leadingNewline || index > 0) lines.push('')
+    if (accountIndex === 0 && resultIndex === 0) lines.push('')
+    if (resultIndex > 0) lines.push('')
     lines.push(pad + head)
 
     for (const row of rowsFor(result)) {

@@ -186,7 +186,7 @@ export async function runUsage(options: {
             config.contrast,
             config.nerdFont,
             config.maxWidth,
-            index === 0
+            index
           )
         )
       }
