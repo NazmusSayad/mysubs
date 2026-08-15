@@ -179,18 +179,17 @@ export async function runUsage(options: {
       }
 
       results.push(resolved)
-      if (options.json !== true) {
-        process.stdout.write(
-          `${render([resolved], config.contrast, config.nerdFont, config.maxWidth)}\n`
-        )
-      }
     } finally {
       if (stopProgress !== null) stopProgress()
     }
   }
 
   if (options.json === true) {
-    process.stdout.write(`${JSON.stringify(results, null, 2)}\n`)
+    process.stdout.write(JSON.stringify(results, null, 2) + '\n')
+  } else {
+    process.stdout.write(
+      render(results, config.contrast, config.nerdFont, config.maxWidth)
+    )
   }
 
   return 0

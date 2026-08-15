@@ -279,5 +279,6 @@ export function render(
   }
 
   lines.push('')
+  lines.push('')
   return lines.join('\n')
 }
