@@ -156,7 +156,7 @@ export async function runUsage(options: {
 
   const results: AccountUsageResult[] = []
 
-  for (const target of selected) {
+  for (const [index, target] of selected.entries()) {
     let label = target.provider
     if (target.sourceName !== undefined) {
       label = `${target.provider}:${target.sourceName}`
@@ -179,6 +179,17 @@ export async function runUsage(options: {
       }
 
       results.push(resolved)
+      if (options.json !== true) {
+        process.stdout.write(
+          render(
+            [resolved],
+            config.contrast,
+            config.nerdFont,
+            config.maxWidth,
+            index === 0
+          )
+        )
+      }
     } finally {
       if (stopProgress !== null) stopProgress()
     }
@@ -186,10 +197,6 @@ export async function runUsage(options: {
 
   if (options.json === true) {
     process.stdout.write(JSON.stringify(results, null, 2) + '\n')
-  } else {
-    process.stdout.write(
-      render(results, config.contrast, config.nerdFont, config.maxWidth)
-    )
   }
 
   return 0
