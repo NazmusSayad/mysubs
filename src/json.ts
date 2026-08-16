@@ -32,7 +32,9 @@ function clean(node: unknown): void {
       if (kept.length > 0) node.required = kept
     }
 
-    node.additionalProperties = false
+    if (node.additionalProperties === undefined) {
+      node.additionalProperties = false
+    }
   }
 
   for (const value of Object.values(node)) clean(value)
