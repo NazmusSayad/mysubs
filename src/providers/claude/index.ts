@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -14,10 +15,10 @@ import { expandHome } from '../../utils/path'
 import { claudeAccountSchema } from './config'
 import {
   ITEM_NOT_FOUND_EXIT_CODE,
-  KEYCHAIN_SERVICE,
   SECURITY_BIN,
   claudeConfigRoot,
   credentialsPath,
+  keychainServices,
 } from './detect'
 
 const CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e'
@@ -58,7 +59,8 @@ const usageSchema = z.object({
 type Oauth = z.infer<typeof oauthSchema>
 type Window = NonNullable<z.infer<typeof windowSchema>>
 type CredentialSource =
-  { kind: 'file'; path: string } | { kind: 'keychain'; account: string | null }
+  | { kind: 'file'; path: string }
+  | { kind: 'keychain'; account: string; service: string }
 type AuthState = {
   raw: Record<string, unknown>
   oauth: Oauth
@@ -67,52 +69,49 @@ type AuthState = {
 type UsageResource =
   AccountSubscriptionBalanceUsage | AccountSubscriptionConsumptionUsage
 
-function readFromKeychain(): {
+function readFromKeychain(configDir: string): {
   text: string
   source: CredentialSource
 } | null {
   if (process.platform !== 'darwin') return null
 
-  for (const account of [os.userInfo().username, null]) {
-    const args = ['find-generic-password', '-s', KEYCHAIN_SERVICE]
-    if (account !== null) args.push('-a', account)
-    args.push('-w')
-
-    const result = spawnSync(SECURITY_BIN, args, {
-      encoding: 'utf8',
-      timeout: 5000,
-    })
+  const account = os.userInfo().username
+  for (const service of keychainServices(configDir)) {
+    const result = spawnSync(
+      SECURITY_BIN,
+      ['find-generic-password', '-s', service, '-a', account, '-w'],
+      {
+        encoding: 'utf8',
+        timeout: 5000,
+      }
+    )
     if (result.error !== undefined) {
       throw new Error(`reading the keychain failed: ${result.error.message}`)
     }
     if (result.status === ITEM_NOT_FOUND_EXIT_CODE) continue
     if (result.status !== 0) {
       throw new Error(
-        `the "${KEYCHAIN_SERVICE}" keychain item could not be read, the keychain may be locked or access denied (security exit ${String(result.status)})`
+        `the "${service}" keychain item could not be read, the keychain may be locked or access denied (security exit ${String(result.status)})`
       )
     }
 
     const text = result.stdout.trim()
     if (text === '') continue
-    return { text, source: { kind: 'keychain', account } }
+    return { text, source: { kind: 'keychain', account, service } }
   }
-
   return null
 }
 
 function loadAuth(configDir: string): AuthState {
   const file = credentialsPath(configDir)
-  const shared = path.resolve(configDir) === path.resolve(claudeConfigRoot())
 
-  let credentials: { text: string; source: CredentialSource } | null = null
-  if (shared) credentials = readFromKeychain()
+  let credentials = readFromKeychain(configDir)
   if (credentials === null && fs.existsSync(file)) {
     credentials = {
       text: fs.readFileSync(file, 'utf8'),
       source: { kind: 'file', path: file },
     }
   }
-  if (credentials === null) credentials = readFromKeychain()
   if (credentials === null) {
     throw new Error('not signed in, run `claude` to log in')
   }
@@ -143,14 +142,21 @@ function saveAuth(state: AuthState): void {
   const text = JSON.stringify(state.raw)
 
   if (state.source.kind === 'file') {
-    fs.writeFileSync(state.source.path, text, { mode: 0o600 })
-    fs.chmodSync(state.source.path, 0o600)
+    const temporary = `${state.source.path}.${randomBytes(16).toString('hex')}.tmp`
+    try {
+      fs.writeFileSync(temporary, text, { mode: 0o600, flag: 'wx' })
+      fs.chmodSync(temporary, 0o600)
+      fs.renameSync(temporary, state.source.path)
+    } catch (error) {
+      if (fs.existsSync(temporary)) fs.rmSync(temporary)
+      throw error
+    }
     return
   }
 
   if (state.source.kind === 'keychain') {
-    const args = ['add-generic-password', '-U', '-s', KEYCHAIN_SERVICE]
-    if (state.source.account !== null) args.push('-a', state.source.account)
+    const args = ['add-generic-password', '-U', '-s', state.source.service]
+    args.push('-a', state.source.account)
     args.push('-w', text)
 
     const result = spawnSync(SECURITY_BIN, args, {
