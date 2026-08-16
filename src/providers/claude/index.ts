@@ -112,6 +112,7 @@ function loadAuth(configDir: string): AuthState {
       source: { kind: 'file', path: file },
     }
   }
+  if (credentials === null) credentials = readFromKeychain()
   if (credentials === null) {
     throw new Error('not signed in, run `claude` to log in')
   }
