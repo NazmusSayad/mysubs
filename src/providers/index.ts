@@ -1,6 +1,12 @@
 // Do not change this file unless the user explicitly asks to write code here.
 
 import type { ProviderEntry } from '../core/types'
+import { fetchAntigravityAccount } from './antigravity'
+import {
+  antigravityAccountSchema,
+  antigravityOptionsSchema,
+} from './antigravity/config'
+import { detectAntigravityAccounts } from './antigravity/detect'
 import { fetchClaudeAccount } from './claude'
 import { claudeAccountSchema, claudeOptionsSchema } from './claude/config'
 import { detectClaudeAccounts } from './claude/detect'
@@ -36,6 +42,14 @@ export const providers: Record<string, ProviderEntry> = {
     accountSchema: claudeAccountSchema,
     detectDefaults: detectClaudeAccounts,
     fetchAccount: fetchClaudeAccount,
+  },
+  antigravity: {
+    name: 'Antigravity',
+    color: '#4285f4',
+    optionsSchema: antigravityOptionsSchema,
+    accountSchema: antigravityAccountSchema,
+    detectDefaults: detectAntigravityAccounts,
+    fetchAccount: fetchAntigravityAccount,
   },
   copilot: {
     name: 'Copilot',

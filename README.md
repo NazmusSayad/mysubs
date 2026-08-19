@@ -87,6 +87,21 @@ mysubs key get openrouter   # prints the stored secret
 OpenCode Go uses an API key. Zen usage requires an authenticated `Cookie` header
 from `opencode.ai`; optionally set `workspaceID` to select a specific workspace.
 
+## Antigravity
+
+Antigravity reports two shared quota pools, each with a rolling 5-hour and a
+weekly window: Gemini Flash and Pro share `gemini session` and `gemini weekly`,
+while Claude and GPT-OSS share `other session` and `other weekly`.
+
+Usage comes from the Antigravity CLI itself, so no token or sign-in is needed
+beyond running `antigravity` once. If the CLI is already running, mysubs asks it
+directly; otherwise it starts one in the background, reads the quota, and stops
+it again. Set `cliPath` on the account or `ANTIGRAVITY_CLI_PATH` when the `antigravity`
+(or `agy`) binary is not on your `PATH`.
+
+Because a cold read starts the CLI, it takes a few seconds; the cache keeps
+later runs instant. This is a Google-internal interface and may change.
+
 ## GitHub Copilot
 
 Copilot reads a GitHub token. Detection uses `GITHUB_TOKEN`, then `GH_TOKEN`, and
