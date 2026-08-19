@@ -60,6 +60,7 @@ const quotaSummarySchema = z.object({
 const userStatusSchema = z.object({
   userStatus: z
     .object({
+      name: z.string().nullish(),
       userTier: z.object({ name: z.string().nullish() }).nullish(),
       planStatus: z
         .object({
@@ -282,28 +283,38 @@ export function parseQuota(
   return usage
 }
 
-async function fetchPlan(endpoint: Endpoint): Promise<string | null> {
+function cleanText(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (trimmed === '') return null
+  return trimmed
+}
+
+async function fetchStatus(
+  endpoint: Endpoint
+): Promise<{ info: string | null; plan: string | null }> {
+  const empty = { info: null, plan: null }
   const response = await postLocal(endpoint, 'GetUserStatus')
-  if (response === null) return null
-  if (response.status !== 200) return null
+  if (response === null) return empty
+  if (response.status !== 200) return empty
 
   let raw: unknown
   try {
     raw = JSON.parse(response.body)
   } catch {
-    return null
+    return empty
   }
 
   const parsed = userStatusSchema.safeParse(raw)
-  if (!parsed.success) return null
+  if (!parsed.success) return empty
 
   const status = parsed.data.userStatus
-  const tier = status?.userTier?.name ?? status?.planStatus?.planInfo?.planName
-  if (typeof tier !== 'string') return null
-
-  const trimmed = tier.trim()
-  if (trimmed === '') return null
-  return trimmed
+  return {
+    info: cleanText(status?.name),
+    plan:
+      cleanText(status?.userTier?.name) ??
+      cleanText(status?.planStatus?.planInfo?.planName),
+  }
 }
 
 async function fetchUsage(
@@ -350,8 +361,9 @@ async function readUsage(endpoint: Endpoint): Promise<AccountUsageResult> {
     usage,
   }
 
-  const plan = await fetchPlan(endpoint)
-  if (plan !== null) result.accountPlan = plan
+  const status = await fetchStatus(endpoint)
+  if (status.info !== null) result.accountInfo = status.info
+  if (status.plan !== null) result.accountPlan = status.plan
 
   return result
 }
