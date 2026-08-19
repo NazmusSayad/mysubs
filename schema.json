@@ -1,0 +1,398 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "cacheTTL": {
+      "default": "1m",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "detect": {
+      "default": true,
+      "type": "boolean"
+    },
+    "contrast": {
+      "default": 0.4,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "nerdFont": {
+      "default": false,
+      "type": "boolean"
+    },
+    "maxWidth": {
+      "default": 120,
+      "type": "number",
+      "minimum": 80
+    },
+    "$schema": {
+      "type": "string"
+    },
+    "codex": {
+      "type": "object",
+      "properties": {
+        "cache": {
+          "default": true,
+          "type": "boolean"
+        },
+        "detect": {
+          "default": true,
+          "type": "boolean"
+        },
+        "accounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              },
+              "configDir": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "configDir"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "claude": {
+      "type": "object",
+      "properties": {
+        "cache": {
+          "default": true,
+          "type": "boolean"
+        },
+        "detect": {
+          "default": true,
+          "type": "boolean"
+        },
+        "accounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              },
+              "configDir": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "configDir"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "antigravity": {
+      "type": "object",
+      "properties": {
+        "cache": {
+          "default": true,
+          "type": "boolean"
+        },
+        "detect": {
+          "default": true,
+          "type": "boolean"
+        },
+        "accounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              },
+              "cliPath": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "copilot": {
+      "type": "object",
+      "properties": {
+        "cache": {
+          "default": true,
+          "type": "boolean"
+        },
+        "detect": {
+          "default": true,
+          "type": "boolean"
+        },
+        "accounts": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "info": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "const": "token"
+                  },
+                  "token": {
+                    "type": "string",
+                    "pattern": "^(env|key):[A-Za-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "source",
+                  "token"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "info": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "const": "gh"
+                  }
+                },
+                "required": [
+                  "source"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "openrouter": {
+      "type": "object",
+      "properties": {
+        "cache": {
+          "default": true,
+          "type": "boolean"
+        },
+        "detect": {
+          "default": true,
+          "type": "boolean"
+        },
+        "accounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              },
+              "apiKey": {
+                "type": "string",
+                "pattern": "^(env|key):[A-Za-z0-9_]+$"
+              }
+            },
+            "required": [
+              "apiKey"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "opencode": {
+      "type": "object",
+      "properties": {
+        "cache": {
+          "default": true,
+          "type": "boolean"
+        },
+        "detect": {
+          "default": true,
+          "type": "boolean"
+        },
+        "accounts": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "info": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "product": {
+                    "type": "string",
+                    "const": "go"
+                  },
+                  "apiKey": {
+                    "type": "string",
+                    "pattern": "^(env|key):[A-Za-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "product",
+                  "apiKey"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "info": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "product": {
+                    "type": "string",
+                    "const": "zen"
+                  },
+                  "cookie": {
+                    "type": "string",
+                    "pattern": "^(env|key):[A-Za-z0-9_]+$"
+                  },
+                  "workspaceID": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "product",
+                  "cookie"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": {}
+}
