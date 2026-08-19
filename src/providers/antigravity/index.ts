@@ -29,17 +29,9 @@ const SESSION_WINDOW_SECONDS = 18000
 const WEEKLY_WINDOW_SECONDS = 604800
 
 const BUCKETS = [
-  {
-    id: 'gemini-5h',
-    key: 'geminiSession',
-    windowSeconds: SESSION_WINDOW_SECONDS,
-  },
-  {
-    id: 'gemini-weekly',
-    key: 'geminiWeekly',
-    windowSeconds: WEEKLY_WINDOW_SECONDS,
-  },
-  { id: '3p-5h', key: 'otherSession', windowSeconds: SESSION_WINDOW_SECONDS },
+  { id: 'gemini-5h', key: 'session', windowSeconds: SESSION_WINDOW_SECONDS },
+  { id: 'gemini-weekly', key: 'weekly', windowSeconds: WEEKLY_WINDOW_SECONDS },
+  { id: '3p-5h', key: 'other', windowSeconds: SESSION_WINDOW_SECONDS },
   { id: '3p-weekly', key: 'otherWeekly', windowSeconds: WEEKLY_WINDOW_SECONDS },
 ]
 

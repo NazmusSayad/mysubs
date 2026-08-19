@@ -90,8 +90,8 @@ from `opencode.ai`; optionally set `workspaceID` to select a specific workspace.
 ## Antigravity
 
 Antigravity reports two shared quota pools, each with a rolling 5-hour and a
-weekly window: Gemini Flash and Pro share `gemini session` and `gemini weekly`,
-while Claude and GPT-OSS share `other session` and `other weekly`.
+weekly window. Gemini Flash and Pro share `session` and `weekly`; Claude and
+GPT-OSS share a second pool, shown as `other` and `other weekly`.
 
 Usage comes from the Antigravity CLI itself, so no token or sign-in is needed
 beyond running `antigravity` once. If the CLI is already running, mysubs asks it

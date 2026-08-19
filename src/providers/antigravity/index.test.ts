@@ -32,12 +32,12 @@ describe('Antigravity provider', () => {
     const usage = parseQuota(JSON.stringify(summary))
 
     expect(Object.keys(usage ?? {})).toEqual([
-      'geminiSession',
-      'geminiWeekly',
-      'otherSession',
+      'session',
+      'weekly',
+      'other',
       'otherWeekly',
     ])
-    expect(usage?.geminiWeekly).toEqual({
+    expect(usage?.weekly).toEqual({
       kind: 'consumption',
       unit: 'percent',
       used: 75,
@@ -47,9 +47,9 @@ describe('Antigravity provider', () => {
       windowSeconds: 604800,
       resetsAt: '2026-08-26T04:47:08.000Z',
     })
-    expect(usage?.geminiSession?.used).toBe(0)
-    expect(usage?.otherSession?.used).toBe(100)
-    expect(usage?.geminiSession?.windowSeconds).toBe(18000)
+    expect(usage?.session?.used).toBe(0)
+    expect(usage?.other?.used).toBe(100)
+    expect(usage?.session?.windowSeconds).toBe(18000)
   })
 
   it('drops buckets without a usable fraction and unknown bucket ids', () => {
@@ -69,7 +69,7 @@ describe('Antigravity provider', () => {
       })
     )
 
-    expect(Object.keys(usage ?? {})).toEqual(['geminiSession'])
+    expect(Object.keys(usage ?? {})).toEqual(['session'])
   })
 
   it('rejects a response that carries no quota groups', () => {
