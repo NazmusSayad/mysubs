@@ -125,6 +125,10 @@ async function resolveAccount(
       : { sourceType: target.sourceType }),
   }
 
+  const info = target.account.info
+  if (typeof info === 'string') resolved.accountInfo = info
+  if (info === false) delete resolved.accountInfo
+
   if (key !== null && target.options.cache && result.error === undefined) {
     try {
       writeCache(key, Date.now() + ttl, resolved)

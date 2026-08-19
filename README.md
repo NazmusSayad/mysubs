@@ -65,7 +65,9 @@ Example:
 ```
 
 Account keys select the account, such as `mysubs codex:work`; `name` is an
-optional display name. Set `detect` inside an individual provider to `false` to skip automatic account
+optional display name. `info` overrides the account info reported by the
+provider (the name shown after `›`); set it to a string to replace it, or to
+`false` to hide it. Set `detect` inside an individual provider to `false` to skip automatic account
 detection for that provider. The root `detect` setting still disables detection
 for every provider.
 

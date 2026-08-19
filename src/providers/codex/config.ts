@@ -1,10 +1,8 @@
 import { z } from 'zod'
-import { providerBaseOptions } from '../../core/schema'
+import { accountBaseSchema, providerBaseOptions } from '../../core/schema'
 
-export const codexAccountSchema = z.object({
-  name: z.string().min(1).optional(),
+export const codexAccountSchema = accountBaseSchema.extend({
   configDir: z.string().min(1),
-  __type: z.literal('account').default('account'),
 })
 
 export const codexOptionsSchema = providerBaseOptions.extend({})

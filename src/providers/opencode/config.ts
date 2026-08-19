@@ -1,20 +1,15 @@
 import { z } from 'zod'
-import { providerBaseOptions } from '../../core/schema'
+import { accountBaseSchema, providerBaseOptions } from '../../core/schema'
 import { secretRefSchema } from '../../lib/secret'
-
-const commonAccountSchema = {
-  name: z.string().min(1).optional(),
-  __type: z.literal('account').default('account'),
-}
 
 export const opencodeAccountSchema = z.discriminatedUnion('product', [
   z.object({
-    ...commonAccountSchema,
+    ...accountBaseSchema.shape,
     product: z.literal('go'),
     apiKey: secretRefSchema,
   }),
   z.object({
-    ...commonAccountSchema,
+    ...accountBaseSchema.shape,
     product: z.literal('zen'),
     cookie: secretRefSchema,
     workspaceID: z.string().min(1).optional(),

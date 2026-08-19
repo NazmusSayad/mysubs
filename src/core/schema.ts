@@ -1,5 +1,11 @@
 import { z } from 'zod'
 
+export const accountBaseSchema = z.object({
+  name: z.string().min(1).optional(),
+  info: z.union([z.string().min(1), z.literal(false)]).optional(),
+  __type: z.literal('account').default('account'),
+})
+
 export const providerBaseOptions = z.object({
   cache: z.boolean().default(true),
   detect: z.boolean().default(true),

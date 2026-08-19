@@ -1,20 +1,15 @@
 import { z } from 'zod'
-import { providerBaseOptions } from '../../core/schema'
+import { accountBaseSchema, providerBaseOptions } from '../../core/schema'
 import { secretRefSchema } from '../../lib/secret'
-
-const commonAccountSchema = {
-  name: z.string().min(1).optional(),
-  __type: z.literal('account').default('account'),
-}
 
 export const copilotAccountSchema = z.discriminatedUnion('source', [
   z.object({
-    ...commonAccountSchema,
+    ...accountBaseSchema.shape,
     source: z.literal('token'),
     token: secretRefSchema,
   }),
   z.object({
-    ...commonAccountSchema,
+    ...accountBaseSchema.shape,
     source: z.literal('gh'),
   }),
 ])
