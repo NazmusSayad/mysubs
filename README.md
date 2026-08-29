@@ -36,7 +36,8 @@ Example:
   "maxWidth": 120,
   "codex": {
     "accounts": {
-      "work": { "name": "Work", "configDir": "~/.config/codex" }
+      "work": { "name": "Work", "configDir": "~/.config/codex" },
+      "opencode": { "adapter": "opencode-oauth" }
     }
   },
   "claude": {
@@ -70,6 +71,13 @@ provider (the name shown after `›`); set it to a string to replace it, or to
 `false` to hide it. Set `detect` inside an individual provider to `false` to skip automatic account
 detection for that provider. The root `detect` setting still disables detection
 for every provider.
+
+Codex accounts also come from the opencode CLI's stored OpenAI OAuth login
+(`~/.local/share/opencode/auth.json`). That login is detected automatically
+alongside native Codex logins, and `{ "adapter": "opencode-oauth" }` adds it as
+an explicit account. Set `authPath` to point at a different opencode `auth.json`.
+Refreshed tokens are written back to opencode's `auth.json`, so both tools stay
+signed in.
 
 ## Secrets
 

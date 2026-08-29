@@ -11,6 +11,12 @@ import type {
 } from '../../core/types'
 import { expandHome } from '../../utils/path'
 import { codexAccountSchema } from './config'
+import {
+  loadOpenCodeAuth,
+  saveOpenCodeAuth,
+  type OpenCodeAuth,
+  type OpenCodeAuthState,
+} from './opencode-auth'
 
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann'
 const TOKEN_URL = 'https://auth.openai.com/oauth/token'
@@ -170,28 +176,11 @@ function saveAuth(state: AuthState): void {
   throw new Error('unknown codex auth source')
 }
 
-function jwtExpiresAt(token: string): number | null {
-  const segments = token.split('.')
-  if (segments.length !== 3) return null
+const JWT_PROFILE_CLAIM = 'https://api.openai.com/profile'
 
-  const payloadSegment = segments[1]
-  if (payloadSegment === undefined) return null
-
-  try {
-    const payload: unknown = JSON.parse(
-      Buffer.from(payloadSegment, 'base64url').toString('utf8')
-    )
-    if (typeof payload !== 'object' || payload === null) return null
-
-    const exp = (payload as Record<string, unknown>).exp
-    if (typeof exp !== 'number') return null
-    return exp * 1000
-  } catch {
-    return null
-  }
-}
-
-function jwtName(token: string | null | undefined): string | null {
+function jwtPayload(
+  token: string | null | undefined
+): Record<string, unknown> | null {
   if (token === undefined || token === null || token === '') return null
 
   const segments = token.split('.')
@@ -206,13 +195,37 @@ function jwtName(token: string | null | undefined): string | null {
     )
     if (typeof payload !== 'object' || payload === null) return null
 
-    const name = (payload as Record<string, unknown>).name
-    if (typeof name !== 'string') return null
-    if (name.trim() === '') return null
-    return name.trim()
+    return payload as Record<string, unknown>
   } catch {
     return null
   }
+}
+
+function jwtExpiresAt(token: string): number | null {
+  const payload = jwtPayload(token)
+  if (payload === null) return null
+
+  const exp = payload.exp
+  if (typeof exp !== 'number') return null
+  return exp * 1000
+}
+
+function jwtName(token: string | null | undefined): string | null {
+  const payload = jwtPayload(token)
+  if (payload === null) return null
+
+  const candidates: unknown[] = [
+    payload.name,
+    (payload[JWT_PROFILE_CLAIM] as Record<string, unknown> | undefined)?.name,
+  ]
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue
+    const name = candidate.trim()
+    if (name !== '') return name
+  }
+
+  return null
 }
 
 function needsRefresh(auth: Auth): boolean {
@@ -326,6 +339,148 @@ function refreshErrorCode(body: unknown): string | null {
   return null
 }
 
+function opencodeNeedsRefresh(auth: OpenCodeAuth): boolean {
+  const expiresAt = jwtExpiresAt(auth.access)
+  if (expiresAt !== null) {
+    return expiresAt - Date.now() <= REFRESH_WINDOW_MS
+  }
+
+  if (typeof auth.expires === 'number' && auth.expires > 0) {
+    return auth.expires - Date.now() <= REFRESH_WINDOW_MS
+  }
+
+  return false
+}
+
+async function refreshOpenCodeAccessToken(
+  state: OpenCodeAuthState
+): Promise<string> {
+  const refreshToken = state.auth.refresh
+  if (refreshToken === undefined || refreshToken === '') {
+    throw new Error(
+      'session expired, sign in via opencode (`opencode auth login`)'
+    )
+  }
+
+  const response = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id: CLIENT_ID,
+      refresh_token: refreshToken,
+    }).toString(),
+  })
+
+  const text = await response.text()
+  let body: unknown = null
+  try {
+    body = JSON.parse(text)
+  } catch {
+    body = null
+  }
+
+  if (response.status === 400 || response.status === 401) {
+    const code = refreshErrorCode(body)
+    if (code === 'refresh_token_expired') {
+      throw new Error(
+        'session expired, sign in via opencode (`opencode auth login`)'
+      )
+    }
+    if (code === 'refresh_token_reused') {
+      throw new Error(
+        'token conflict, sign in via opencode (`opencode auth login`)'
+      )
+    }
+    if (code === 'refresh_token_invalidated') {
+      throw new Error(
+        'token revoked, sign in via opencode (`opencode auth login`)'
+      )
+    }
+    throw new Error(`token refresh failed (HTTP ${String(response.status)})`)
+  }
+
+  if (!response.ok) {
+    throw new Error(`token refresh failed (HTTP ${String(response.status)})`)
+  }
+
+  const fields = body as Record<string, unknown> | null
+  const accessToken = fields?.access_token
+  if (typeof accessToken !== 'string' || accessToken === '') {
+    throw new Error(
+      'session expired, sign in via opencode (`opencode auth login`)'
+    )
+  }
+
+  const expiresIn =
+    typeof fields?.expires_in === 'number' && fields.expires_in > 0
+      ? fields.expires_in
+      : null
+  const expiresAt =
+    expiresIn !== null
+      ? Date.now() + expiresIn * 1000
+      : jwtExpiresAt(accessToken)
+
+  state.auth = {
+    ...state.auth,
+    access: accessToken,
+    ...(typeof fields?.refresh_token === 'string' && fields.refresh_token !== ''
+      ? { refresh: fields.refresh_token }
+      : {}),
+    ...(expiresAt !== null ? { expires: expiresAt } : {}),
+  }
+
+  try {
+    saveOpenCodeAuth(state)
+  } catch (error) {
+    process.stderr.write(
+      `mysubs: could not persist refreshed opencode credentials: ${errorMessage(error)}\n`
+    )
+  }
+
+  return accessToken
+}
+
+async function fetchUsageOpenCode(
+  authPath: string | undefined
+): Promise<AccountUsageResult> {
+  const state = loadOpenCodeAuth(authPath)
+
+  let accessToken = state.auth.access
+  if (opencodeNeedsRefresh(state.auth)) {
+    accessToken = await refreshOpenCodeAccessToken(state)
+  }
+
+  let response = await fetchUsageResponse(accessToken, state.auth.accountId)
+  if (response.status === 401 || response.status === 403) {
+    accessToken = await refreshOpenCodeAccessToken(state)
+    response = await fetchUsageResponse(accessToken, state.auth.accountId)
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(
+        'session expired, sign in via opencode (`opencode auth login`)'
+      )
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `codex usage request failed (HTTP ${String(response.status)})`
+    )
+  }
+
+  const parsed = usageSchema.safeParse(await response.json())
+  if (!parsed.success) {
+    throw new Error('codex usage response was not in the expected shape')
+  }
+
+  const result = mapUsage(parsed.data, response)
+
+  const name = jwtName(state.auth.access)
+  if (name !== null) result.accountInfo = name
+
+  return result
+}
+
 function fetchUsageResponse(
   accessToken: string,
   accountID: string | null | undefined
@@ -347,10 +502,10 @@ function errorMessage(error: unknown): string {
   return String(error)
 }
 
-async function fetchUsage(
-  account: z.infer<typeof codexAccountSchema>
+async function fetchUsageNative(
+  configDir: string
 ): Promise<AccountUsageResult> {
-  const state = loadAuth(account.configDir)
+  const state = loadAuth(configDir)
 
   let accessToken = state.auth.tokens?.access_token ?? ''
   if (accessToken === '') {
@@ -362,7 +517,7 @@ async function fetchUsage(
   }
 
   if (needsRefresh(state.auth)) {
-    const live = loadAuth(account.configDir)
+    const live = loadAuth(configDir)
     const liveToken = live.auth.tokens?.access_token ?? ''
     if (liveToken !== '') {
       state.raw = live.raw
@@ -620,10 +775,14 @@ export async function fetchCodexAccount(
 ): Promise<AccountUsageResult> {
   try {
     const parsed = codexAccountSchema.parse(account)
-    return await fetchUsage({
-      ...parsed,
-      configDir: expandHome(parsed.configDir),
-    })
+
+    if ('adapter' in parsed) {
+      return await fetchUsageOpenCode(
+        parsed.authPath !== undefined ? expandHome(parsed.authPath) : undefined
+      )
+    }
+
+    return await fetchUsageNative(expandHome(parsed.configDir))
   } catch (error) {
     return {
       provider: 'codex',

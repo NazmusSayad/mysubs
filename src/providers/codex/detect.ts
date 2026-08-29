@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { expandHome } from '../../utils/path'
+import { hasOpenCodeOAuth } from './opencode-auth'
 
 function codexHomes(): string[] {
   const codexHome = process.env.CODEX_HOME
@@ -14,11 +15,23 @@ function codexHomes(): string[] {
   ]
 }
 
-export async function detectCodexAccounts() {
+type DetectedCodexAccount =
+  | { configDir: string; __type: 'account' }
+  | { adapter: 'opencode-oauth'; __type: 'account' }
+
+export async function detectCodexAccounts(): Promise<DetectedCodexAccount[]> {
+  const accounts: DetectedCodexAccount[] = []
+
   for (const home of codexHomes()) {
     if (fs.existsSync(path.join(home, 'auth.json'))) {
-      return [{ configDir: home, __type: 'account' as const }]
+      accounts.push({ configDir: home, __type: 'account' })
+      break
     }
   }
-  return []
+
+  if (hasOpenCodeOAuth()) {
+    accounts.push({ adapter: 'opencode-oauth', __type: 'account' })
+  }
+
+  return accounts
 }
