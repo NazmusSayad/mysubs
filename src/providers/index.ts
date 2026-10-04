@@ -10,7 +10,7 @@ import { detectAntigravityAccounts } from './antigravity/detect'
 import { fetchClaudeAccount } from './claude'
 import { claudeAccountSchema, claudeOptionsSchema } from './claude/config'
 import { detectClaudeAccounts } from './claude/detect'
-import { fetchCodexAccount } from './codex'
+import { fetchCodexAccount, readCodexAccountMetadata } from './codex'
 import { codexAccountSchema, codexOptionsSchema } from './codex/config'
 import { detectCodexAccounts } from './codex/detect'
 import { fetchCopilotAccount } from './copilot'
@@ -33,6 +33,7 @@ export const providers: Record<string, ProviderEntry> = {
     optionsSchema: codexOptionsSchema,
     accountSchema: codexAccountSchema,
     detectDefaults: detectCodexAccounts,
+    readAccountMetadata: readCodexAccountMetadata,
     fetchAccount: fetchCodexAccount,
   },
   claude: {

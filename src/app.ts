@@ -1,6 +1,7 @@
 import { configPath, loadConfig, type Config } from './core/config'
 import { render } from './core/render'
 import type {
+  AccountMetadata,
   AccountUsageResult,
   ProviderAccount,
   ProviderOptions,
@@ -19,7 +20,9 @@ type AccountTarget = {
   sourceType?: 'manual'
 }
 
-async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
+export async function collectAccountTargets(
+  config: Config
+): Promise<AccountTarget[]> {
   const targets: AccountTarget[] = []
 
   for (const [provider, entry] of Object.entries(providers)) {
@@ -32,7 +35,20 @@ async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
       try {
         const detected = await entry.detectDefaults()
         for (const account of detected) {
-          targets.push({ provider, account, options })
+          targets.push({
+            provider,
+            account,
+            options,
+            ...(typeof account.detectedKey === 'string'
+              ? {
+                  sourceKey: account.detectedKey,
+                  sourceName:
+                    typeof account.detectedName === 'string'
+                      ? account.detectedName
+                      : undefined,
+                }
+              : {}),
+          })
         }
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error)
@@ -60,7 +76,7 @@ async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
   return targets
 }
 
-function selectAccountTargets(
+export function selectAccountTargets(
   targets: AccountTarget[],
   subs: string[] | undefined
 ): AccountTarget[] {
@@ -79,7 +95,16 @@ function selectAccountTargets(
       if (target.provider !== provider) return false
       if (account === null) return true
       if (account === '') return target.sourceType !== 'manual'
-      return target.sourceKey === account
+      const manual = targets.some(
+        (candidate) =>
+          candidate.provider === provider &&
+          candidate.sourceType === 'manual' &&
+          candidate.sourceKey === account
+      )
+      return (
+        target.sourceKey === account &&
+        (!manual || target.sourceType === 'manual')
+      )
     })
 
     if (matches.length === 0) {
@@ -93,7 +118,7 @@ function selectAccountTargets(
   return selected
 }
 
-async function resolveAccount(
+export async function resolveAccount(
   target: AccountTarget,
   ttl: number,
   force: boolean,
@@ -104,19 +129,52 @@ async function resolveAccount(
     throw new Error(`unknown provider ${target.provider}`)
   }
 
-  const key = cacheKey(target.provider, target.account)
+  let metadata: AccountMetadata | undefined
+  try {
+    metadata = await entry.readAccountMetadata?.(target.account)
+  } catch (error) {
+    return {
+      provider: target.provider,
+      cached: false,
+      sourceName: target.sourceName,
+      sourceType: target.sourceType,
+      error:
+        error instanceof Error ? error.message : 'Account source unavailable',
+    }
+  }
+  if (metadata?.error !== undefined) {
+    return {
+      provider: target.provider,
+      cached: false,
+      sourceName: metadata.sourceName,
+      sourceActive: metadata.sourceActive,
+      sourceType: target.sourceType,
+      error: metadata.error,
+    }
+  }
+  const key = cacheKey(
+    target.provider,
+    metadata?.cacheIdentity === undefined
+      ? target.account
+      : { __type: 'account', cacheIdentity: metadata.cacheIdentity }
+  )
+  let cached: AccountUsageResult | null = null
   if (key !== null && target.options.cache && !force) {
-    const cached = readCache(key, target.provider)
-    if (cached !== null) return { ...cached, cached: true }
+    cached = readCache(key, target.provider)
+    // Preserve existing cache behavior for providers without live metadata.
+    if (cached !== null && metadata === undefined)
+      return { ...cached, cached: true }
   }
 
-  const result = await entry.fetchAccount(target.account, {
-    ...target.options,
-    ...(verbose ? { verbose: true } : {}),
-  })
+  const result =
+    cached ??
+    (await entry.fetchAccount(target.account, {
+      ...target.options,
+      ...(verbose ? { verbose: true } : {}),
+    }))
   const resolved: AccountUsageResult = {
     ...result,
-    cached: false,
+    cached: cached !== null,
     ...(target.sourceName === undefined
       ? {}
       : { sourceName: target.sourceName }),
@@ -124,14 +182,41 @@ async function resolveAccount(
       ? {}
       : { sourceType: target.sourceType }),
   }
+  if (metadata !== undefined) {
+    resolved.sourceName =
+      cached === null
+        ? (result.sourceName ?? metadata.sourceName)
+        : metadata.sourceName
+    resolved.sourceActive =
+      cached === null
+        ? (result.sourceActive ?? metadata.sourceActive)
+        : metadata.sourceActive
+    resolved.sourceType = target.sourceType
+    delete resolved.accountInfo
+  }
 
   const info = target.account.info
   if (typeof info === 'string') resolved.accountInfo = info
   if (info === false) delete resolved.accountInfo
 
-  if (key !== null && target.options.cache && result.error === undefined) {
+  if (
+    cached === null &&
+    key !== null &&
+    target.options.cache &&
+    result.error === undefined
+  ) {
     try {
-      writeCache(key, Date.now() + ttl, resolved)
+      if (metadata === undefined) {
+        writeCache(key, Date.now() + ttl, resolved)
+      } else {
+        // Cache usage, not a source's mutable presentation or active flag.
+        const value = { ...result, cached: false }
+        delete value.sourceName
+        delete value.sourceActive
+        delete value.sourceType
+        delete value.accountInfo
+        writeCache(key, Date.now() + ttl, value)
+      }
     } catch {}
   }
 

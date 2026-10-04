@@ -34,6 +34,7 @@ export const accountUsageResultSchema = z.strictObject({
   provider: z.string(),
   cached: z.boolean(),
   sourceName: z.string().optional(),
+  sourceActive: z.boolean().optional(),
   sourceType: z.literal('manual').optional(),
   accountInfo: z.string().optional(),
   accountPlan: z.string().optional(),

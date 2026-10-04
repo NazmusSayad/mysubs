@@ -79,6 +79,13 @@ an explicit account. Set `authPath` to point at a different opencode `auth.json`
 Refreshed tokens are written back to opencode's `auth.json`, so both tools stay
 signed in.
 
+OpenCode v2 browser and headless OAuth accounts are also detected automatically.
+They are read from OpenCode's SQLite store by the `opencode-v2-oauth` adapter,
+which requires Node.js 24+ with `node:sqlite` enabled. V2 is read-only: mysubs
+never refreshes tokens, writes credentials, or switches OpenCode accounts. To
+configure one explicitly, use `"adapter": "opencode-v2-oauth"` with its
+`credentialID` and, if needed, `databasePath`.
+
 ## Secrets
 
 Never put a raw API key in the config. Reference it instead, and mysubs will resolve it
