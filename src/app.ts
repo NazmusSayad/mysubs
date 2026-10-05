@@ -28,7 +28,7 @@ async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
       throw new Error(`no options were loaded for provider ${provider}`)
     }
 
-    if (config.detect && options.detect) {
+    if (options.detect) {
       try {
         const detected = await entry.detectDefaults()
         for (const account of detected) {

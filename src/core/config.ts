@@ -26,7 +26,6 @@ export function configPath(): string {
 
 export type Config = {
   cacheTTL: number | string
-  detect: boolean
   contrast: number
   nerdFont: boolean
   maxWidth: number
@@ -73,12 +72,14 @@ export function loadConfig(readFile = true): Config {
       accounts[provider] = parsedAccounts
     }
 
-    options[provider] = entry.optionsSchema.parse(providerConfig.data)
+    options[provider] = entry.optionsSchema.parse({
+      detect: parsed.data.detect,
+      ...providerConfig.data,
+    })
   }
 
   return {
     cacheTTL: parsed.data.cacheTTL,
-    detect: parsed.data.detect,
     contrast: parsed.data.contrast,
     nerdFont: parsed.data.nerdFont,
     maxWidth: parsed.data.maxWidth,
