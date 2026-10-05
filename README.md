@@ -68,9 +68,8 @@ Example:
 Account keys select the account, such as `mysubs codex:work`; `name` is an
 optional display name. `info` overrides the account info reported by the
 provider (the name shown after `›`); set it to a string to replace it, or to
-`false` to hide it. Set `detect` inside an individual provider to `false` to skip automatic account
-detection for that provider. The root `detect` setting still disables detection
-for every provider.
+`false` to hide it. The root `detect` setting is the default for every provider,
+and `detect` inside an individual provider overrides it for that provider.
 
 Codex accounts also come from the opencode CLI's stored OpenAI OAuth login
 (`~/.local/share/opencode/auth.json`). That login is detected automatically
