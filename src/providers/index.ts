@@ -19,6 +19,12 @@ import { detectCopilotAccounts } from './copilot/detect'
 import { fetchOpenCodeAccount } from './opencode'
 import { opencodeAccountSchema, opencodeOptionsSchema } from './opencode/config'
 import { detectOpenCodeAccounts } from './opencode/detect'
+import { fetchOpenCode2CodexAccount } from './opencode2-codex'
+import {
+  opencode2CodexAccountSchema,
+  opencode2CodexOptionsSchema,
+} from './opencode2-codex/config'
+import { detectOpenCode2CodexAccounts } from './opencode2-codex/detect'
 import { fetchOpenRouterAccount } from './openrouter'
 import {
   openrouterAccountSchema,
@@ -34,6 +40,14 @@ export const providers: Record<string, ProviderEntry> = {
     accountSchema: codexAccountSchema,
     detectDefaults: detectCodexAccounts,
     fetchAccount: fetchCodexAccount,
+  },
+  'opencode2-codex': {
+    name: 'Codex',
+    color: '#6e5ae6',
+    optionsSchema: opencode2CodexOptionsSchema,
+    accountSchema: opencode2CodexAccountSchema,
+    detectDefaults: detectOpenCode2CodexAccounts,
+    fetchAccount: fetchOpenCode2CodexAccount,
   },
   claude: {
     name: 'Claude',

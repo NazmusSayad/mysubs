@@ -53,7 +53,7 @@ const windowSchema = z
   })
   .nullish()
 
-const usageSchema = z.object({
+export const usageSchema = z.object({
   plan_type: z.string().nullish(),
   rate_limit: z
     .object({
@@ -210,7 +210,7 @@ function jwtExpiresAt(token: string): number | null {
   return exp * 1000
 }
 
-function jwtName(token: string | null | undefined): string | null {
+export function jwtName(token: string | null | undefined): string | null {
   const payload = jwtPayload(token)
   if (payload === null) return null
 
@@ -481,7 +481,7 @@ async function fetchUsageOpenCode(
   return result
 }
 
-function fetchUsageResponse(
+export function fetchUsageResponse(
   accessToken: string,
   accountID: string | null | undefined
 ): Promise<Response> {
@@ -667,7 +667,10 @@ function assignWindows(
   }
 }
 
-function mapUsage(body: z.infer<typeof usageSchema>, response: Response) {
+export function mapUsage(
+  body: z.infer<typeof usageSchema>,
+  response: Response
+) {
   const usage: Record<string, UsageResource> = {}
 
   assignWindows(

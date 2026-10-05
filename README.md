@@ -79,6 +79,12 @@ an explicit account. Set `authPath` to point at a different opencode `auth.json`
 Refreshed tokens are written back to opencode's `auth.json`, so both tools stay
 signed in.
 
+OpenCode v2 keeps its logins in `~/.local/share/opencode/opencode.db` instead.
+The `opencode2-codex` provider detects the Codex logins stored there and shows
+them as Codex accounts. To add one explicitly, use its `credentialID`, and set
+`databasePath` to read a different database. mysubs only reads this database,
+so open OpenCode to refresh an expired login.
+
 ## Secrets
 
 Never put a raw API key in the config. Reference it instead, and mysubs will resolve it

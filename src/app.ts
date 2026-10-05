@@ -143,8 +143,9 @@ export async function runUsage(options: {
   json?: boolean
   force?: boolean
   verbose?: boolean
+  config?: boolean
 }): Promise<number> {
-  const config = loadConfig()
+  const config = loadConfig(options.config !== false)
   const accountTargets = await collectAccountTargets(config)
 
   if (accountTargets.length === 0) {

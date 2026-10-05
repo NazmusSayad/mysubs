@@ -34,11 +34,11 @@ export type Config = {
   options: Record<string, ProviderOptions>
 }
 
-export function loadConfig(): Config {
+export function loadConfig(readFile = true): Config {
   const file = configPath()
   let raw: unknown = {}
 
-  if (fs.existsSync(file)) {
+  if (readFile && fs.existsSync(file)) {
     try {
       raw = JSON.parse(fs.readFileSync(file, 'utf8'))
     } catch {
