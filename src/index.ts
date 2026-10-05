@@ -59,6 +59,7 @@ const program = new Command('mysubs')
   .option('-j, --json', 'JSON-only output')
   .option('-f, --force', 'ignore cache and refetch')
   .option('-v, --verbose', 'show sanitized provider request details')
+  .option('--no-config', 'do not read the config file')
   .action(async (subs, options) => {
     process.exitCode = await runUsage({ ...options, subs })
   })
