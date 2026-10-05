@@ -52,6 +52,7 @@ export async function fetchOpenCode2CodexAccount(
     const result: AccountUsageResult = {
       ...mapUsage(body.data, response),
       provider: 'opencode2-codex',
+      sourceName: 'OpenCode',
     }
 
     const name = jwtName(credential.access)
