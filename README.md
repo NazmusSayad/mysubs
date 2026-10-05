@@ -79,12 +79,11 @@ an explicit account. Set `authPath` to point at a different opencode `auth.json`
 Refreshed tokens are written back to opencode's `auth.json`, so both tools stay
 signed in.
 
-OpenCode v2 browser and headless OAuth accounts are also detected automatically.
-They are read from OpenCode's SQLite store by the `opencode-v2-oauth` adapter,
-which requires Node.js 24+ with `node:sqlite` enabled. V2 is read-only: mysubs
-never refreshes tokens, writes credentials, or switches OpenCode accounts. To
-configure one explicitly, use `"adapter": "opencode-v2-oauth"` with its
-`credentialID` and, if needed, `databasePath`.
+OpenCode v2 keeps its logins in `~/.local/share/opencode/opencode.db` instead.
+The `opencode2-codex` provider detects the Codex logins stored there and shows
+them as Codex accounts. To add one explicitly, use its `credentialID`, and set
+`databasePath` to read a different database. mysubs only reads this database,
+so open OpenCode to refresh an expired login.
 
 ## Secrets
 

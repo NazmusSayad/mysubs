@@ -32,24 +32,12 @@ export type AccountUsageResult = Prettify<
   z.infer<typeof accountUsageResultSchema>
 >
 
-// Safe, live source metadata for providers whose accounts can change while
-// usage is cached. Never include credentials in this result.
-export type AccountMetadata = {
-  cacheIdentity?: string
-  sourceName?: string
-  sourceActive?: boolean
-  error?: string
-}
-
 export type ProviderEntry = {
   name: string
   color: string
   optionsSchema: z.ZodType<ProviderOptions>
   accountSchema: z.ZodType<ProviderAccount>
   detectDefaults: () => Promise<ProviderAccount[]>
-  readAccountMetadata?: (
-    account: ProviderAccount
-  ) => Promise<AccountMetadata | undefined>
   fetchAccount: (
     account: ProviderAccount,
     options: ProviderOptions

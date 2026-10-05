@@ -3,7 +3,6 @@ import os from 'node:os'
 import path from 'node:path'
 import { expandHome } from '../../utils/path'
 import { hasOpenCodeOAuth } from './opencode-auth'
-import { discoverOpenCodeV2 } from './opencode-v2-auth'
 
 function codexHomes(): string[] {
   const codexHome = process.env.CODEX_HOME
@@ -19,14 +18,6 @@ function codexHomes(): string[] {
 type DetectedCodexAccount =
   | { configDir: string; __type: 'account' }
   | { adapter: 'opencode-oauth'; __type: 'account' }
-  | {
-      adapter: 'opencode-v2-oauth'
-      databasePath: string
-      credentialID: string
-      detectedKey: string
-      detectedName: string
-      __type: 'account'
-    }
 
 export async function detectCodexAccounts(): Promise<DetectedCodexAccount[]> {
   const accounts: DetectedCodexAccount[] = []
@@ -38,27 +29,8 @@ export async function detectCodexAccounts(): Promise<DetectedCodexAccount[]> {
     }
   }
 
-  try {
-    const store = await discoverOpenCodeV2()
-    if (store !== null) {
-      for (const account of store.accounts) {
-        accounts.push({
-          adapter: 'opencode-v2-oauth',
-          databasePath: store.databasePath,
-          credentialID: account.id,
-          detectedKey: account.id,
-          detectedName: account.label,
-          __type: 'account',
-        })
-      }
-    } else if (hasOpenCodeOAuth()) {
-      accounts.push({ adapter: 'opencode-oauth', __type: 'account' })
-    }
-  } catch (error) {
-    // Preserve independent native discovery, but never fall back to stale v1.
-    const reason =
-      error instanceof Error ? error.message : 'OpenCode v2 discovery failed'
-    process.stderr.write(`mysubs: ${reason}\n`)
+  if (hasOpenCodeOAuth()) {
+    accounts.push({ adapter: 'opencode-oauth', __type: 'account' })
   }
 
   return accounts

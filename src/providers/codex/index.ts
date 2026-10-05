@@ -3,7 +3,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
 import type {
-  AccountMetadata,
   AccountSubscriptionBalanceUsage,
   AccountSubscriptionConsumptionUsage,
   AccountUsageResult,
@@ -11,21 +10,13 @@ import type {
   ProviderOptions,
 } from '../../core/types'
 import { expandHome } from '../../utils/path'
-import { codexAccountSchema, opencodeV2AccountSchema } from './config'
+import { codexAccountSchema } from './config'
 import {
   loadOpenCodeAuth,
   saveOpenCodeAuth,
   type OpenCodeAuth,
   type OpenCodeAuthState,
 } from './opencode-auth'
-import {
-  loadOpenCodeV2Credential,
-  OpenCodeV2Error,
-  opencodeV2FallbackLabel,
-  opencodeV2Identity,
-  requireFreshOpenCodeV2,
-  safeOpenCodeDisplay,
-} from './opencode-v2-auth'
 
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann'
 const TOKEN_URL = 'https://auth.openai.com/oauth/token'
@@ -62,7 +53,7 @@ const windowSchema = z
   })
   .nullish()
 
-const usageSchema = z.object({
+export const usageSchema = z.object({
   plan_type: z.string().nullish(),
   rate_limit: z
     .object({
@@ -219,7 +210,7 @@ function jwtExpiresAt(token: string): number | null {
   return exp * 1000
 }
 
-function jwtName(token: string | null | undefined): string | null {
+export function jwtName(token: string | null | undefined): string | null {
   const payload = jwtPayload(token)
   if (payload === null) return null
 
@@ -490,7 +481,7 @@ async function fetchUsageOpenCode(
   return result
 }
 
-function fetchUsageResponse(
+export function fetchUsageResponse(
   accessToken: string,
   accountID: string | null | undefined
 ): Promise<Response> {
@@ -504,141 +495,6 @@ function fetchUsageResponse(
   }
 
   return fetch(USAGE_URL, { headers })
-}
-
-async function fetchUsageOpenCodeV2(
-  account: z.infer<typeof opencodeV2AccountSchema>
-): Promise<AccountUsageResult> {
-  let credential = await loadOpenCodeV2Credential(
-    account.databasePath,
-    account.credentialID
-  )
-  requireFreshOpenCodeV2(credential)
-  let response: Response
-  function request(
-    access: string,
-    accountID: string | null
-  ): Promise<Response> {
-    return fetch(USAGE_URL, {
-      method: 'GET',
-      redirect: 'error',
-      signal: AbortSignal.timeout(15_000),
-      headers: {
-        Authorization: `Bearer ${access}`,
-        Accept: 'application/json',
-        'User-Agent': 'mysubs',
-        ...(accountID ? { 'ChatGPT-Account-Id': accountID } : {}),
-      },
-    })
-  }
-  try {
-    response = await request(credential.access, credential.accountID)
-  } catch {
-    throw new OpenCodeV2Error(
-      'OpenCode v2 usage request failed: network error',
-      credential
-    )
-  }
-  if (response.status === 401) {
-    await response.body?.cancel()
-    const live = await loadOpenCodeV2Credential(
-      account.databasePath,
-      account.credentialID
-    )
-    requireFreshOpenCodeV2(live)
-    if (live.access !== credential.access) {
-      try {
-        response = await request(live.access, live.accountID)
-      } catch {
-        throw new OpenCodeV2Error(
-          'OpenCode v2 usage request failed: network error',
-          live
-        )
-      }
-    }
-    credential = live
-  }
-  if (!response.ok) {
-    // Neither response bodies nor underlying transport errors are safe to echo.
-    await response.body?.cancel()
-    throw new OpenCodeV2Error(
-      `OpenCode v2 usage request failed (HTTP ${String(response.status)}); credentials were not refreshed or modified`,
-      credential
-    )
-  }
-  let body: unknown
-  try {
-    body = await response.json()
-  } catch {
-    throw new OpenCodeV2Error(
-      'OpenCode v2 usage response was not valid JSON',
-      credential
-    )
-  }
-  const parsed = usageSchema.safeParse(body)
-  if (!parsed.success)
-    throw new OpenCodeV2Error(
-      'OpenCode v2 usage response was not in the expected shape',
-      credential
-    )
-  // Map only usage, never JWT profile claims. Guard arbitrary API display text.
-  const safeBody = {
-    ...parsed.data,
-    plan_type: safeOpenCodeDisplay(parsed.data.plan_type),
-    additional_rate_limits: parsed.data.additional_rate_limits?.filter(
-      (entry) => {
-        if (typeof entry !== 'object' || entry === null) return false
-        const fields = entry as Record<string, unknown>
-        return (
-          safeOpenCodeDisplay(fields.limit_name ?? fields.metered_feature) !==
-          undefined
-        )
-      }
-    ),
-  }
-  return {
-    ...mapUsage(safeBody, response),
-    sourceName: account.name ?? credential.label,
-    sourceActive: credential.active,
-  }
-}
-
-export async function readCodexAccountMetadata(
-  account: ProviderAccount
-): Promise<AccountMetadata | undefined> {
-  if (account.adapter !== 'opencode-v2-oauth') return undefined
-  try {
-    const parsed = opencodeV2AccountSchema.safeParse(account)
-    if (!parsed.success)
-      throw new OpenCodeV2Error('Invalid OpenCode v2 account configuration')
-    const credential = await loadOpenCodeV2Credential(
-      parsed.data.databasePath,
-      parsed.data.credentialID
-    )
-    requireFreshOpenCodeV2(credential)
-    return {
-      cacheIdentity: opencodeV2Identity(
-        parsed.data.databasePath,
-        parsed.data.credentialID
-      ),
-      sourceName: parsed.data.name ?? credential.label,
-      sourceActive: credential.active,
-    }
-  } catch (cause) {
-    if (!(cause instanceof OpenCodeV2Error)) throw cause
-    return {
-      sourceName:
-        safeOpenCodeDisplay(account.name) ??
-        cause.account?.label ??
-        opencodeV2FallbackLabel(
-          typeof account.credentialID === 'string'
-            ? account.credentialID
-            : 'unknown'
-        ),
-      sourceActive: cause.account?.active,
-      error: cause.message,
-    }
-  }
 }
 
 function errorMessage(error: unknown): string {
@@ -811,7 +667,10 @@ function assignWindows(
   }
 }
 
-function mapUsage(body: z.infer<typeof usageSchema>, response: Response) {
+export function mapUsage(
+  body: z.infer<typeof usageSchema>,
+  response: Response
+) {
   const usage: Record<string, UsageResource> = {}
 
   assignWindows(
@@ -921,9 +780,6 @@ export async function fetchCodexAccount(
     const parsed = codexAccountSchema.parse(account)
 
     if ('adapter' in parsed) {
-      if (parsed.adapter === 'opencode-v2-oauth') {
-        return await fetchUsageOpenCodeV2(parsed)
-      }
       return await fetchUsageOpenCode(
         parsed.authPath !== undefined ? expandHome(parsed.authPath) : undefined
       )
@@ -934,32 +790,7 @@ export async function fetchCodexAccount(
     return {
       provider: 'codex',
       cached: false,
-      ...(account.adapter === 'opencode-v2-oauth'
-        ? {
-            sourceName:
-              safeOpenCodeDisplay(account.name) ??
-              (error instanceof OpenCodeV2Error
-                ? error.account?.label
-                : undefined) ??
-              opencodeV2FallbackLabel(
-                typeof account.credentialID === 'string'
-                  ? account.credentialID
-                  : 'unknown'
-              ),
-            sourceActive:
-              error instanceof OpenCodeV2Error
-                ? error.account?.active
-                : undefined,
-          }
-        : {}),
-      error:
-        account.adapter === 'opencode-v2-oauth'
-          ? error instanceof OpenCodeV2Error
-            ? error.message
-            : 'OpenCode v2 usage unavailable: invalid configuration or response'
-          : error instanceof Error
-            ? error.message
-            : String(error),
+      error: error instanceof Error ? error.message : String(error),
     }
   }
 }

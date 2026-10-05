@@ -224,9 +224,6 @@ export function render(
     if (result.sourceName !== undefined) {
       head += ` ${chalk.dim(result.sourceName)}`
     }
-    if (result.sourceActive === true) {
-      head += chalk.dim(' [active]')
-    }
     if (result.accountInfo !== undefined) {
       head += chalk.dim(' › ') + chalk.hex(provider.color)(result.accountInfo)
     }
