@@ -7,6 +7,7 @@ Check how much of your AI subscriptions you have used, across accounts and provi
 ```sh
 mysubs            # show usage for all accounts
 mysubs codex      # show only codex accounts
+mysubs codex reset # interactively use a banked Codex reset credit
 mysubs codex:work # show only the "work" codex account
 mysubs codex:     # show only automatically detected codex accounts
 mysubs codex claude opencode:zen # select multiple providers or accounts

@@ -21,6 +21,9 @@ import {
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann'
 const TOKEN_URL = 'https://auth.openai.com/oauth/token'
 const USAGE_URL = 'https://chatgpt.com/backend-api/wham/usage'
+const RESET_CREDITS_URL =
+  'https://chatgpt.com/backend-api/wham/rate-limit-reset-credits'
+const CONSUME_RESET_CREDIT_URL = `${RESET_CREDITS_URL}/consume`
 const KEYCHAIN_SERVICE = 'Codex Auth'
 const SECURITY_BIN = '/usr/bin/security'
 const ITEM_NOT_FOUND_EXIT_CODE = 44
@@ -495,6 +498,150 @@ export function fetchUsageResponse(
   }
 
   return fetch(USAGE_URL, { headers })
+}
+
+export function fetchResetCreditsResponse(
+  accessToken: string,
+  accountID: string | null | undefined
+): Promise<Response> {
+  return fetch(RESET_CREDITS_URL, {
+    headers: codexResetHeaders(accessToken, accountID),
+  })
+}
+
+export function consumeResetCreditResponse(
+  accessToken: string,
+  accountID: string | null | undefined,
+  creditID: string,
+  redeemRequestID: string
+): Promise<Response> {
+  return fetch(CONSUME_RESET_CREDIT_URL, {
+    method: 'POST',
+    headers: {
+      ...codexResetHeaders(accessToken, accountID),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      credit_id: creditID,
+      redeem_request_id: redeemRequestID,
+    }),
+  })
+}
+
+function codexResetHeaders(
+  accessToken: string,
+  accountID: string | null | undefined
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    Accept: 'application/json',
+    'User-Agent': 'mysubs',
+    'OpenAI-Beta': 'codex-1',
+    originator: 'Codex Desktop',
+  }
+  if (accountID !== undefined && accountID !== null && accountID !== '') {
+    headers['ChatGPT-Account-Id'] = accountID
+  }
+  return headers
+}
+
+async function requestWithNativeAuth(
+  configDir: string,
+  request: (
+    accessToken: string,
+    accountID: string | null | undefined
+  ) => Promise<Response>
+): Promise<Response> {
+  const state = loadAuth(configDir)
+  let accessToken = state.auth.tokens?.access_token ?? ''
+  if (accessToken === '') {
+    const apiKey = state.auth.OPENAI_API_KEY
+    if (apiKey !== undefined && apiKey !== null && apiKey !== '') {
+      throw new Error('reset credits are not available for API key auth')
+    }
+    throw new Error('not signed in, run `codex` to log in')
+  }
+
+  if (needsRefresh(state.auth)) {
+    const live = loadAuth(configDir)
+    const liveToken = live.auth.tokens?.access_token ?? ''
+    if (liveToken !== '') {
+      state.raw = live.raw
+      state.auth = live.auth
+      state.source = live.source
+      accessToken = liveToken
+    }
+  }
+
+  if (needsRefresh(state.auth)) {
+    accessToken = await refreshAccessToken(state)
+  }
+
+  let response = await request(accessToken, state.auth.tokens?.account_id)
+  if (response.status === 401 || response.status === 403) {
+    accessToken = await refreshAccessToken(state)
+    response = await request(accessToken, state.auth.tokens?.account_id)
+  }
+  return response
+}
+
+async function requestWithOpenCodeAuth(
+  authPath: string | undefined,
+  request: (
+    accessToken: string,
+    accountID: string | null | undefined
+  ) => Promise<Response>
+): Promise<Response> {
+  const state = loadOpenCodeAuth(authPath)
+  let accessToken = state.auth.access
+  if (opencodeNeedsRefresh(state.auth)) {
+    accessToken = await refreshOpenCodeAccessToken(state)
+  }
+
+  let response = await request(accessToken, state.auth.accountId)
+  if (response.status === 401 || response.status === 403) {
+    accessToken = await refreshOpenCodeAccessToken(state)
+    response = await request(accessToken, state.auth.accountId)
+  }
+  return response
+}
+
+async function requestWithCodexAccount(
+  account: ProviderAccount,
+  request: (
+    accessToken: string,
+    accountID: string | null | undefined
+  ) => Promise<Response>
+): Promise<Response> {
+  const parsed = codexAccountSchema.parse(account)
+  if ('adapter' in parsed) {
+    return requestWithOpenCodeAuth(
+      parsed.authPath !== undefined ? expandHome(parsed.authPath) : undefined,
+      request
+    )
+  }
+  return requestWithNativeAuth(expandHome(parsed.configDir), request)
+}
+
+export function fetchCodexResetCredits(
+  account: ProviderAccount
+): Promise<Response> {
+  return requestWithCodexAccount(account, fetchResetCreditsResponse)
+}
+
+export function consumeCodexResetCredit(
+  account: ProviderAccount,
+  creditID: string,
+  redeemRequestID: string
+): Promise<Response> {
+  return requestWithCodexAccount(account, (accessToken, accountID) =>
+    consumeResetCreditResponse(
+      accessToken,
+      accountID,
+      creditID,
+      redeemRequestID
+    )
+  )
 }
 
 function errorMessage(error: unknown): string {

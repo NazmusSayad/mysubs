@@ -4,9 +4,58 @@ import type {
   ProviderAccount,
   ProviderOptions,
 } from '../../core/types'
-import { fetchUsageResponse, jwtName, mapUsage, usageSchema } from '../codex'
+import {
+  consumeResetCreditResponse,
+  fetchResetCreditsResponse,
+  fetchUsageResponse,
+  jwtName,
+  mapUsage,
+  usageSchema,
+} from '../codex'
 import { opencode2CodexAccountSchema } from './config'
 import { opencodeDatabasePath, readOpenCodeCredentials } from './store'
+
+function resetCredential(account: ProviderAccount) {
+  const parsed = opencode2CodexAccountSchema.parse(account)
+  const databasePath = opencodeDatabasePath(parsed.databasePath)
+  if (!fs.existsSync(databasePath)) {
+    throw new Error(`no opencode database at ${databasePath}`)
+  }
+
+  const credential = readOpenCodeCredentials(databasePath).find(
+    (item) => item.id === parsed.credentialID
+  )
+  if (credential === undefined) {
+    throw new Error(
+      'no codex oauth login in opencode, sign in via `opencode auth login`'
+    )
+  }
+  if (credential.expires <= Date.now()) {
+    throw new Error('session expired, open opencode to refresh it')
+  }
+  return credential
+}
+
+export function fetchOpenCode2ResetCredits(
+  account: ProviderAccount
+): Promise<Response> {
+  const credential = resetCredential(account)
+  return fetchResetCreditsResponse(credential.access, credential.accountID)
+}
+
+export function consumeOpenCode2ResetCredit(
+  account: ProviderAccount,
+  creditID: string,
+  redeemRequestID: string
+): Promise<Response> {
+  const credential = resetCredential(account)
+  return consumeResetCreditResponse(
+    credential.access,
+    credential.accountID,
+    creditID,
+    redeemRequestID
+  )
+}
 
 export async function fetchOpenCode2CodexAccount(
   account: ProviderAccount,

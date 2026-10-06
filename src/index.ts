@@ -2,6 +2,7 @@
 import { Command } from '@commander-js/extra-typings'
 import readline from 'node:readline'
 import { runUsage } from './app'
+import { runCodexReset } from './codex-reset'
 import { getKeyringEntrySecret, setKeyringEntrySecret } from './lib/keyring'
 
 function errorMessage(error: unknown): string {
@@ -95,6 +96,14 @@ keyCommand
 
 async function main(): Promise<void> {
   try {
+    const args = process.argv.slice(2)
+    if (args[0] === 'codex' && args[1] === 'reset') {
+      if (args.length !== 2) {
+        throw new Error('usage: mysubs codex reset')
+      }
+      process.exitCode = await runCodexReset()
+      return
+    }
     await program.parseAsync(process.argv)
   } catch (error) {
     process.stderr.write(`mysubs: ${errorMessage(error)}\n`)
