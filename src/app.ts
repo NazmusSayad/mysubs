@@ -14,46 +14,76 @@ type AccountTarget = {
   provider: string
   account: ProviderAccount
   options: ProviderOptions
-  sourceKey?: string
+  alias?: string
   sourceName?: string
   sourceType?: 'manual'
+}
+
+async function detectAccounts(provider: string): Promise<ProviderAccount[]> {
+  const entry = providers[provider]
+  if (entry === undefined) {
+    throw new Error(`unknown provider ${provider}`)
+  }
+
+  try {
+    return await entry.detectDefaults()
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    process.stderr.write(
+      `mysubs: could not detect ${provider} accounts: ${reason}\n`
+    )
+    return []
+  }
+}
+
+function providerOptions(provider: string, cache: boolean): ProviderOptions {
+  const entry = providers[provider]
+  if (entry === undefined) {
+    throw new Error(`unknown provider ${provider}`)
+  }
+  return entry.optionsSchema.parse({ cache })
 }
 
 async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
   const targets: AccountTarget[] = []
 
-  for (const [provider, entry] of Object.entries(providers)) {
-    const options = config.options[provider]
-    if (options === undefined) {
-      throw new Error(`no options were loaded for provider ${provider}`)
-    }
+  for (const item of config.accounts) {
+    const options = providerOptions(item.provider, item.cache ?? config.cache)
 
-    if (options.detect) {
-      try {
-        const detected = await entry.detectDefaults()
-        for (const account of detected) {
-          targets.push({ provider, account, options })
-        }
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error)
-        process.stderr.write(
-          `mysubs: could not detect ${provider} accounts: ${reason}\n`
-        )
+    if (item.auto) {
+      for (const account of await detectAccounts(item.provider)) {
+        targets.push({
+          provider: item.provider,
+          account:
+            item.info === undefined ? account : { ...account, info: item.info },
+          options,
+          alias: item.alias,
+          sourceName: item.name,
+        })
       }
+      continue
     }
 
-    for (const [key, account] of Object.entries(
-      config.accounts[provider] ?? {}
-    )) {
-      const name = account.name
-      targets.push({
-        provider,
-        account,
-        options,
-        sourceKey: key,
-        sourceType: 'manual',
-        sourceName: typeof name === 'string' && name !== '' ? name : undefined,
-      })
+    const name = item.account.name
+    targets.push({
+      provider: item.provider,
+      account: item.account,
+      options,
+      alias: item.alias,
+      sourceType: 'manual',
+      sourceName: typeof name === 'string' && name !== '' ? name : undefined,
+    })
+  }
+
+  if (config.detect) {
+    const listed = new Set(config.accounts.map((item) => item.provider))
+    for (const provider of Object.keys(providers)) {
+      if (listed.has(provider)) continue
+      if (config.skipDetect.includes(provider)) continue
+      const options = providerOptions(provider, config.cache)
+      for (const account of await detectAccounts(provider)) {
+        targets.push({ provider, account, options })
+      }
     }
   }
 
@@ -71,18 +101,34 @@ function selectAccountTargets(
     const token = raw.trim()
     if (token === '') continue
 
-    const separator = token.indexOf(':')
-    const provider = separator === -1 ? token : token.slice(0, separator)
-    const account = separator === -1 ? null : token.slice(separator + 1)
-
     const matches = targets.filter((target) => {
-      if (target.provider !== provider) return false
-      if (account === null) return true
-      if (account === '') return target.sourceType !== 'manual'
-      return target.sourceKey === account
+      if (token.endsWith(':')) {
+        return (
+          target.provider === token.slice(0, -1) &&
+          target.sourceType !== 'manual'
+        )
+      }
+      return target.alias === token || target.provider === token
     })
 
     if (matches.length === 0) {
+      const aliases = [
+        ...new Set(targets.flatMap((target) => target.alias ?? [])),
+      ]
+      const key = token.slice(token.indexOf(':') + 1)
+      const suggested = aliases.filter(
+        (alias) => key !== '' && (alias === key || alias.endsWith(`-${key}`))
+      )
+      if (suggested.length > 0) {
+        throw new Error(
+          `no configured account matches "${token}", did you mean ${suggested.map((alias) => `"${alias}"`).join(' or ')}?`
+        )
+      }
+      if (aliases.length > 0) {
+        throw new Error(
+          `no configured account matches "${token}", available aliases: ${aliases.join(', ')}`
+        )
+      }
       throw new Error(`no configured account matches "${token}"`)
     }
     for (const match of matches) {
