@@ -114,6 +114,11 @@ for (const [name, provider] of Object.entries(providers)) {
   })
 }
 
+properties.skipDetect = {
+  type: 'array',
+  items: { enum: Object.keys(providers) },
+}
+
 properties.accounts = {
   type: 'array',
   items: { anyOf: accountVariants },

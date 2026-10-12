@@ -70,8 +70,10 @@ List your accounts in `accounts`, in the order you want them shown:
 `{ "provider": "codex", "auto": true }` puts the automatically detected Codex
 accounts at that position. `name` and `info` on an `auto` entry replace them on
 every account it detects. Providers that do not appear in `accounts` at all
-are detected and shown after the listed ones; set `"detect": false` at the root
-to turn that off.
+are detected and shown after the listed ones. Set `"detect": false` at the root
+to turn that off, or list providers in `skipDetect` to leave only those out,
+such as `"skipDetect": ["copilot"]`. Manual accounts of a skipped provider
+still show.
 
 `alias` lets you select an account directly, such as `mysubs work`. Aliases must
 be unique and cannot be a provider name. An alias on an `auto` entry selects

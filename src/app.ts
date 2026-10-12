@@ -79,6 +79,7 @@ async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
     const listed = new Set(config.accounts.map((item) => item.provider))
     for (const provider of Object.keys(providers)) {
       if (listed.has(provider)) continue
+      if (config.skipDetect.includes(provider)) continue
       const options = providerOptions(provider, config.cache)
       for (const account of await detectAccounts(provider)) {
         targets.push({ provider, account, options })

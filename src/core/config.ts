@@ -10,6 +10,7 @@ export const configSchema = z.looseObject({
   cacheTTL: z.union([z.number(), z.string()]).default('1m'),
   cache: z.boolean().default(true),
   detect: z.boolean().default(true),
+  skipDetect: z.array(z.string()).default([]),
   contrast: z.number().min(0).max(1).default(0.4),
   nerdFont: z.boolean().default(false),
   maxWidth: z.number().min(80).default(120),
@@ -61,6 +62,7 @@ export type Config = {
   cacheTTL: number | string
   cache: boolean
   detect: boolean
+  skipDetect: string[]
   contrast: number
   nerdFont: boolean
   maxWidth: number
@@ -107,7 +109,7 @@ function migrateLegacyConfig(
     Object.keys(section.accounts ?? {})
   )
   const accounts: Record<string, unknown>[] = []
-  let everyProviderListed = true
+  const skipDetect: string[] = []
 
   for (const provider of Object.keys(providers)) {
     const section = sections[provider] ?? {}
@@ -123,10 +125,10 @@ function migrateLegacyConfig(
       const alias = clashes ? `${provider}-${key}` : key
       accounts.push({ provider, alias, ...account, ...cache })
     }
-    if (!detect && entries.length === 0) everyProviderListed = false
+    if (!detect && rootDetect !== false) skipDetect.push(provider)
   }
 
-  migrated.detect = (rootDetect ?? true) && everyProviderListed
+  if (skipDetect.length > 0) migrated.skipDetect = skipDetect
   migrated.accounts = accounts
   return migrated
 }
@@ -212,6 +214,17 @@ export function loadConfig(readFile = true): Config {
     })
   }
 
+  for (const provider of parsed.data.skipDetect) {
+    if (providers[provider] === undefined) {
+      throw new Error(`${file}: skipDetect has unknown provider "${provider}"`)
+    }
+    if (autoProviders.has(provider)) {
+      throw new Error(
+        `${file}: skipDetect has ${provider}, but accounts also has an auto entry for it`
+      )
+    }
+  }
+
   if (legacy) {
     const backup = `${file}.bak`
     if (fs.existsSync(backup)) {
@@ -230,6 +243,7 @@ export function loadConfig(readFile = true): Config {
     cacheTTL: parsed.data.cacheTTL,
     cache: parsed.data.cache,
     detect: parsed.data.detect,
+    skipDetect: parsed.data.skipDetect,
     contrast: parsed.data.contrast,
     nerdFont: parsed.data.nerdFont,
     maxWidth: parsed.data.maxWidth,
