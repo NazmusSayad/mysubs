@@ -1,6 +1,6 @@
 {
   "name": "mysubs",
-  "version": "0.0.17",
+  "version": "0.1.0",
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
