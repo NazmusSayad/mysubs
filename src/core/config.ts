@@ -3,17 +3,30 @@ import os from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
 import { providers } from '../providers'
-import type { ProviderAccount, ProviderOptions } from './types'
+import type { ProviderAccount } from './types'
 
 export const configSchema = z.looseObject({
   cacheTTL: z.union([z.number(), z.string()]).default('1m'),
+  cache: z.boolean().default(true),
   detect: z.boolean().default(true),
   contrast: z.number().min(0).max(1).default(0.4),
   nerdFont: z.boolean().default(false),
   maxWidth: z.number().min(80).default(120),
+  accounts: z.array(z.unknown()).default([]),
 })
-const providerConfigSchema = z.looseObject({
-  accounts: z.unknown().optional(),
+export const accountEntrySchema = z.looseObject({
+  provider: z.string().min(1),
+  auto: z.literal(true).optional(),
+  alias: z
+    .string()
+    .regex(/^[^:\s]+$/)
+    .optional(),
+  cache: z.boolean().optional(),
+})
+const legacyProviderSchema = z.looseObject({
+  accounts: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
+  detect: z.boolean().optional(),
+  cache: z.boolean().optional(),
 })
 
 export function configPath(): string {
@@ -24,13 +37,88 @@ export function configPath(): string {
   return path.join(os.homedir(), '.config', 'mysubs', 'config.json')
 }
 
+export type ConfigAccount =
+  | { provider: string; alias?: string; cache?: boolean; auto: true }
+  | {
+      provider: string
+      alias?: string
+      cache?: boolean
+      auto: false
+      account: ProviderAccount
+    }
+
 export type Config = {
   cacheTTL: number | string
+  cache: boolean
+  detect: boolean
   contrast: number
   nerdFont: boolean
   maxWidth: number
-  accounts: Record<string, Record<string, ProviderAccount>>
-  options: Record<string, ProviderOptions>
+  accounts: ConfigAccount[]
+}
+
+function isLegacyConfig(raw: unknown): raw is Record<string, unknown> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return false
+  }
+  return Object.keys(providers).some((provider) => provider in raw)
+}
+
+function migrateLegacyConfig(
+  file: string,
+  raw: Record<string, unknown>
+): Record<string, unknown> {
+  if (raw.accounts !== undefined) {
+    throw new Error(
+      `${file} mixes the "accounts" list with old provider sections`
+    )
+  }
+
+  const rootDetect = raw.detect
+  if (rootDetect !== undefined && typeof rootDetect !== 'boolean') {
+    throw new Error(`${file} is invalid`)
+  }
+
+  const migrated: Record<string, unknown> = {}
+  const sections: Record<string, z.infer<typeof legacyProviderSchema>> = {}
+  for (const [key, value] of Object.entries(raw)) {
+    if (providers[key] === undefined) {
+      migrated[key] = value
+      continue
+    }
+    const section = legacyProviderSchema.safeParse(value)
+    if (!section.success) {
+      throw new Error(`${file} is invalid`)
+    }
+    sections[key] = section.data
+  }
+
+  const keys = Object.values(sections).flatMap((section) =>
+    Object.keys(section.accounts ?? {})
+  )
+  const accounts: Record<string, unknown>[] = []
+  let everyProviderListed = true
+
+  for (const provider of Object.keys(providers)) {
+    const section = sections[provider] ?? {}
+    const detect = section.detect ?? rootDetect ?? true
+    const cache = section.cache === undefined ? {} : { cache: section.cache }
+    const entries = Object.entries(section.accounts ?? {})
+
+    if (detect) accounts.push({ provider, auto: true, ...cache })
+    for (const [key, account] of entries) {
+      const clashes =
+        providers[key] !== undefined ||
+        keys.filter((other) => other === key).length > 1
+      const alias = clashes ? `${provider}-${key}` : key
+      accounts.push({ provider, alias, ...account, ...cache })
+    }
+    if (!detect && entries.length === 0) everyProviderListed = false
+  }
+
+  migrated.detect = (rootDetect ?? true) && everyProviderListed
+  migrated.accounts = accounts
+  return migrated
 }
 
 export function loadConfig(readFile = true): Config {
@@ -45,45 +133,89 @@ export function loadConfig(readFile = true): Config {
     }
   }
 
+  let legacy = false
+  if (isLegacyConfig(raw)) {
+    raw = migrateLegacyConfig(file, raw)
+    legacy = true
+  }
+
   const parsed = configSchema.safeParse(raw)
   if (!parsed.success) {
     throw new Error(`${file} is invalid`)
   }
 
-  const accounts: Config['accounts'] = {}
-  const options: Record<string, ProviderOptions> = {}
+  const accounts: ConfigAccount[] = []
+  const aliases = new Set<string>()
+  const autoProviders = new Set<string>()
 
-  for (const [provider, entry] of Object.entries(providers)) {
-    const providerConfig = providerConfigSchema.safeParse(
-      parsed.data[provider] ?? {}
-    )
-    if (!providerConfig.success) {
-      throw new Error(`${file} is invalid`)
+  for (const [index, item] of parsed.data.accounts.entries()) {
+    const label = `${file}: accounts[${index}]`
+    const entry = accountEntrySchema.safeParse(item)
+    if (!entry.success) {
+      throw new Error(`${label} is invalid\n${z.prettifyError(entry.error)}`)
     }
 
-    const configured = providerConfig.data.accounts
-    if (configured === undefined) {
-      accounts[provider] = {}
-    }
-    if (configured !== undefined) {
-      const parsedAccounts = z
-        .record(z.string().min(1), entry.accountSchema)
-        .parse(configured)
-      accounts[provider] = parsedAccounts
+    const { provider, alias, cache } = entry.data
+    const providerEntry = providers[provider]
+    if (providerEntry === undefined) {
+      throw new Error(`${label} has unknown provider "${provider}"`)
     }
 
-    options[provider] = entry.optionsSchema.parse({
-      detect: parsed.data.detect,
-      ...providerConfig.data,
+    if (alias !== undefined) {
+      if (providers[alias] !== undefined) {
+        throw new Error(`${label} alias "${alias}" is a provider name`)
+      }
+      if (aliases.has(alias)) {
+        throw new Error(`${label} alias "${alias}" is already used`)
+      }
+      aliases.add(alias)
+    }
+
+    if (entry.data.auto === true) {
+      if (autoProviders.has(provider)) {
+        throw new Error(`${label} repeats auto detection for ${provider}`)
+      }
+      autoProviders.add(provider)
+      accounts.push({ provider, alias, cache, auto: true })
+      continue
+    }
+
+    const account = providerEntry.accountSchema.safeParse(item)
+    if (!account.success) {
+      throw new Error(
+        `${label} is not a valid ${provider} account\n${z.prettifyError(account.error)}`
+      )
+    }
+    accounts.push({
+      provider,
+      alias,
+      cache,
+      auto: false,
+      account: account.data,
     })
+  }
+
+  if (legacy) {
+    const backup = `${file}.bak`
+    if (fs.existsSync(backup)) {
+      throw new Error(
+        `${file} uses the old format, but ${backup} already exists; move it so mysubs can migrate`
+      )
+    }
+    fs.copyFileSync(file, backup)
+    fs.writeFileSync(file, `${JSON.stringify(raw, null, 2)}\n`)
+    process.stderr.write(
+      `mysubs: migrated ${file} to the accounts list (backup at ${backup})\n`
+    )
   }
 
   return {
     cacheTTL: parsed.data.cacheTTL,
+    cache: parsed.data.cache,
+    detect: parsed.data.detect,
     contrast: parsed.data.contrast,
     nerdFont: parsed.data.nerdFont,
     maxWidth: parsed.data.maxWidth,
     accounts,
-    options,
   }
 }

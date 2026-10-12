@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
-import { configSchema } from './core/config'
+import { accountEntrySchema, configSchema } from './core/config'
 import { providers } from './providers'
 
 type JSONObject = Record<string, unknown>
@@ -49,32 +49,70 @@ if (!isJSONObject(properties)) {
 
 properties.$schema = { type: 'string' }
 
-for (const [name, entry] of Object.entries(providers)) {
-  const options = z.toJSONSchema(entry.optionsSchema, {
-    io: 'input',
-  }) as JSONObject
-  const account = z.toJSONSchema(entry.accountSchema, {
-    io: 'input',
-  }) as JSONObject
+const entry = z.toJSONSchema(accountEntrySchema, { io: 'input' }) as JSONObject
+const entryProperties = entry.properties
+if (!isJSONObject(entryProperties)) {
+  throw new Error('the account entry schema did not produce properties')
+}
+const {
+  auto: autoProperty,
+  alias: aliasProperty,
+  cache: cacheProperty,
+} = entryProperties
 
-  delete options.$schema
-  delete account.$schema
-
-  const optionProperties = options.properties
-  if (!isJSONObject(optionProperties)) {
-    throw new Error(`the ${name} options schema did not produce properties`)
+function addEntryProperties(node: JSONObject, provider: string): void {
+  if (node.type === 'object') {
+    const nodeProperties = node.properties
+    if (!isJSONObject(nodeProperties)) {
+      throw new Error(`the ${provider} account schema has no properties`)
+    }
+    node.properties = {
+      provider: { const: provider },
+      alias: aliasProperty,
+      cache: cacheProperty,
+      ...nodeProperties,
+    }
+    const required = Array.isArray(node.required) ? node.required : []
+    node.required = ['provider', ...required]
+    return
   }
 
-  properties[name] = {
+  const variants = node.anyOf ?? node.oneOf
+  if (!Array.isArray(variants)) {
+    throw new Error(`the ${provider} account schema has an unexpected shape`)
+  }
+  for (const variant of variants) {
+    if (!isJSONObject(variant)) {
+      throw new Error(`the ${provider} account schema has an unexpected shape`)
+    }
+    addEntryProperties(variant, provider)
+  }
+}
+
+const accountVariants: JSONObject[] = []
+
+for (const [name, provider] of Object.entries(providers)) {
+  const account = z.toJSONSchema(provider.accountSchema, {
+    io: 'input',
+  }) as JSONObject
+  delete account.$schema
+  addEntryProperties(account, name)
+
+  accountVariants.push(account, {
     type: 'object',
     properties: {
-      ...optionProperties,
-      accounts: {
-        type: 'object',
-        additionalProperties: account,
-      },
+      provider: { const: name },
+      auto: autoProperty,
+      alias: aliasProperty,
+      cache: cacheProperty,
     },
-  }
+    required: ['provider', 'auto'],
+  })
+}
+
+properties.accounts = {
+  type: 'array',
+  items: { anyOf: accountVariants },
 }
 
 clean(root)

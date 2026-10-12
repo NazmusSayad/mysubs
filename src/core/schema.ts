@@ -8,7 +8,6 @@ export const accountBaseSchema = z.object({
 
 export const providerBaseOptions = z.object({
   cache: z.boolean().default(true),
-  detect: z.boolean().default(true),
   __type: z.literal('options').default('options'),
 })
 

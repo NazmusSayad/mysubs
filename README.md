@@ -7,9 +7,9 @@ Check how much of your AI subscriptions you have used, across accounts and provi
 ```sh
 mysubs            # show usage for all accounts
 mysubs codex      # show only codex accounts
-mysubs codex:work # show only the "work" codex account
+mysubs work       # show only the account with the alias "work"
 mysubs codex:     # show only automatically detected codex accounts
-mysubs codex claude opencode:zen # select multiple providers or accounts
+mysubs codex claude zen # select multiple providers or accounts
 mysubs -j         # print results as JSON
 mysubs -f         # ignore the cache and fetch fresh data
 ```
@@ -26,7 +26,7 @@ Create `~/.config/mysubs/config.json`. Accounts that already exist on your machi
 (like Codex or Claude logins) are detected automatically, so you may not need a config
 file at all.
 
-Example:
+List your accounts in `accounts`, in the order you want them shown:
 
 ```json
 {
@@ -34,42 +34,56 @@ Example:
   "contrast": 0.4,
   "nerdFont": true,
   "maxWidth": 120,
-  "codex": {
-    "accounts": {
-      "work": { "name": "Work", "configDir": "~/.config/codex" },
-      "opencode": { "adapter": "opencode-oauth" }
+  "accounts": [
+    { "provider": "claude", "alias": "personal", "configDir": "~/.claude" },
+    { "provider": "codex", "auto": true },
+    {
+      "provider": "codex",
+      "alias": "work",
+      "name": "Work",
+      "configDir": "~/.config/codex"
+    },
+    { "provider": "codex", "adapter": "opencode-oauth" },
+    { "provider": "openrouter", "apiKey": "env:OPENROUTER_API_KEY" },
+    {
+      "provider": "opencode",
+      "product": "go",
+      "apiKey": "env:OPENCODE_API_KEY"
+    },
+    {
+      "provider": "opencode",
+      "alias": "zen",
+      "product": "zen",
+      "cookie": "key:opencode-zen"
+    },
+    { "provider": "copilot", "source": "gh" },
+    {
+      "provider": "copilot",
+      "alias": "copilot-work",
+      "source": "token",
+      "token": "key:copilot-work"
     }
-  },
-  "claude": {
-    "accounts": {
-      "personal": { "configDir": "~/.claude" }
-    }
-  },
-  "openrouter": {
-    "accounts": {
-      "main": { "apiKey": "env:OPENROUTER_API_KEY" }
-    }
-  },
-  "opencode": {
-    "accounts": {
-      "go": { "product": "go", "apiKey": "env:OPENCODE_API_KEY" },
-      "zen": { "product": "zen", "cookie": "key:opencode-zen" }
-    }
-  },
-  "copilot": {
-    "accounts": {
-      "cli": { "source": "gh" },
-      "work": { "source": "token", "token": "key:copilot-work" }
-    }
-  }
+  ]
 }
 ```
 
-Account keys select the account, such as `mysubs codex:work`; `name` is an
-optional display name. `info` overrides the account info reported by the
-provider (the name shown after `›`); set it to a string to replace it, or to
-`false` to hide it. The root `detect` setting is the default for every provider,
-and `detect` inside an individual provider overrides it for that provider.
+`{ "provider": "codex", "auto": true }` puts the automatically detected Codex
+accounts at that position. Providers that do not appear in `accounts` at all
+are detected and shown after the listed ones; set `"detect": false` at the root
+to turn that off.
+
+`alias` lets you select an account directly, such as `mysubs work`. Aliases must
+be unique and cannot be a provider name. An alias on an `auto` entry selects
+all of its detected accounts. `name` is an optional display name. `info`
+overrides the account info reported by the provider (the name shown after `›`);
+set it to a string to replace it, or to `false` to hide it.
+
+`cache` at the root turns caching on or off for every account (on by default),
+and `cache` on an entry overrides it for that entry.
+
+Configs in the old format, with accounts nested under each provider, are
+migrated automatically on the next run. The original file is kept as
+`config.json.bak`.
 
 Codex accounts also come from the opencode CLI's stored OpenAI OAuth login
 (`~/.local/share/opencode/auth.json`). That login is detected automatically

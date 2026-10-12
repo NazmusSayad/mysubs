@@ -13,7 +13,7 @@ afterEach(() => {
 })
 
 describe('loadConfig', () => {
-  it('keeps account keys separate from display names', () => {
+  it('keeps aliases separate from display names', () => {
     configRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'mysubs-'))
     vi.stubEnv('XDG_CONFIG_HOME', configRoot)
     const configDir = path.join(configRoot, 'mysubs')
@@ -21,20 +21,29 @@ describe('loadConfig', () => {
     fs.writeFileSync(
       path.join(configDir, 'config.json'),
       JSON.stringify({
-        codex: {
-          accounts: {
-            sayad: { name: 'Personal', configDir: '~/.codex' },
+        accounts: [
+          {
+            provider: 'codex',
+            alias: 'sayad',
+            name: 'Personal',
+            configDir: '~/.codex',
           },
-        },
+        ],
       })
     )
 
-    expect(loadConfig().accounts.codex).toEqual({
-      sayad: {
-        name: 'Personal',
-        configDir: '~/.codex',
-        __type: 'account',
+    expect(loadConfig().accounts).toEqual([
+      {
+        provider: 'codex',
+        alias: 'sayad',
+        cache: undefined,
+        auto: false,
+        account: {
+          name: 'Personal',
+          configDir: '~/.codex',
+          __type: 'account',
+        },
       },
-    })
+    ])
   })
 })
