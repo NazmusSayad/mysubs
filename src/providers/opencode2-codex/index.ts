@@ -19,12 +19,18 @@ export async function fetchOpenCode2CodexAccount(
       throw new Error(`no opencode database at ${databasePath}`)
     }
 
-    const credential = readOpenCodeCredentials(databasePath).find(
-      (item) => item.id === parsed.credentialID
+    const matches = readOpenCodeCredentials(databasePath).filter(
+      (item) => item.label.toLowerCase() === parsed.label.toLowerCase()
     )
+    if (matches.length > 1) {
+      throw new Error(
+        `${String(matches.length)} opencode logins are labeled "${parsed.label}", rename one in opencode`
+      )
+    }
+    const credential = matches[0]
     if (credential === undefined) {
       throw new Error(
-        'no codex oauth login in opencode, sign in via `opencode auth login`'
+        `no codex oauth login labeled "${parsed.label}" in opencode, sign in via \`opencode auth login\``
       )
     }
     if (credential.expires <= Date.now()) {
