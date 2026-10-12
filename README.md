@@ -97,7 +97,8 @@ signed in.
 
 OpenCode v2 keeps its logins in `~/.local/share/opencode/opencode.db` instead.
 The `opencode2-codex` provider detects the Codex logins stored there and shows
-them as Codex accounts. To add one explicitly, use its `credentialID`, and set
+them as Codex accounts. To add one explicitly, use its `label` as OpenCode shows
+it, such as `OpenAI` or `OpenAI 2` (case does not matter), and set
 `databasePath` to read a different database. mysubs only reads this database,
 so open OpenCode to refresh an expired login.
 

@@ -12,7 +12,7 @@ const credentialSchema = z.object({
 })
 
 export type OpenCodeCredential = {
-  id: string
+  label: string
   access: string
   expires: number
   accountID: string | null
@@ -41,13 +41,15 @@ export function readOpenCodeCredentials(
   try {
     const rows = db
       .prepare(
-        "SELECT id, value FROM credential WHERE integration_id = 'openai' ORDER BY time_created"
+        "SELECT label, value FROM credential WHERE integration_id = 'openai' ORDER BY time_created"
       )
       .all()
 
     const credentials: OpenCodeCredential[] = []
     for (const row of rows) {
-      if (typeof row.id !== 'string' || typeof row.value !== 'string') continue
+      if (typeof row.label !== 'string' || typeof row.value !== 'string') {
+        continue
+      }
 
       let value: unknown
       try {
@@ -60,7 +62,7 @@ export function readOpenCodeCredentials(
       if (!parsed.success) continue
 
       credentials.push({
-        id: row.id,
+        label: row.label,
         access: parsed.data.access,
         expires: parsed.data.expires,
         accountID: parsed.data.metadata?.accountID ?? null,

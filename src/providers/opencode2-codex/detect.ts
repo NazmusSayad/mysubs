@@ -6,7 +6,7 @@ export async function detectOpenCode2CodexAccounts() {
   if (!fs.existsSync(databasePath)) return []
 
   return readOpenCodeCredentials(databasePath).map((credential) => ({
-    credentialID: credential.id,
+    label: credential.label,
     __type: 'account' as const,
   }))
 }
