@@ -112,6 +112,23 @@ function selectAccountTargets(
     })
 
     if (matches.length === 0) {
+      const aliases = [
+        ...new Set(targets.flatMap((target) => target.alias ?? [])),
+      ]
+      const key = token.slice(token.indexOf(':') + 1)
+      const suggested = aliases.filter(
+        (alias) => key !== '' && (alias === key || alias.endsWith(`-${key}`))
+      )
+      if (suggested.length > 0) {
+        throw new Error(
+          `no configured account matches "${token}", did you mean ${suggested.map((alias) => `"${alias}"`).join(' or ')}?`
+        )
+      }
+      if (aliases.length > 0) {
+        throw new Error(
+          `no configured account matches "${token}", available aliases: ${aliases.join(', ')}`
+        )
+      }
       throw new Error(`no configured account matches "${token}"`)
     }
     for (const match of matches) {
