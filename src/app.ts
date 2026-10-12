@@ -54,9 +54,11 @@ async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
       for (const account of await detectAccounts(item.provider)) {
         targets.push({
           provider: item.provider,
-          account,
+          account:
+            item.info === undefined ? account : { ...account, info: item.info },
           options,
           alias: item.alias,
+          sourceName: item.name,
         })
       }
       continue

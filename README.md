@@ -68,7 +68,8 @@ List your accounts in `accounts`, in the order you want them shown:
 ```
 
 `{ "provider": "codex", "auto": true }` puts the automatically detected Codex
-accounts at that position. Providers that do not appear in `accounts` at all
+accounts at that position. `name` and `info` on an `auto` entry replace them on
+every account it detects. Providers that do not appear in `accounts` at all
 are detected and shown after the listed ones; set `"detect": false` at the root
 to turn that off.
 

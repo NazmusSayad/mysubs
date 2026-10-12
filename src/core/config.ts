@@ -3,6 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
 import { providers } from '../providers'
+import { accountBaseSchema } from './schema'
 import type { ProviderAccount } from './types'
 
 export const configSchema = z.looseObject({
@@ -22,6 +23,8 @@ export const accountEntrySchema = z.looseObject({
     .regex(/^[^:\s]+$/)
     .optional(),
   cache: z.boolean().optional(),
+  name: accountBaseSchema.shape.name,
+  info: accountBaseSchema.shape.info,
 })
 const legacyProviderSchema = z.looseObject({
   accounts: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
@@ -38,7 +41,14 @@ export function configPath(): string {
 }
 
 export type ConfigAccount =
-  | { provider: string; alias?: string; cache?: boolean; auto: true }
+  | {
+      provider: string
+      alias?: string
+      cache?: boolean
+      auto: true
+      name?: string
+      info?: string | false
+    }
   | {
       provider: string
       alias?: string
@@ -176,7 +186,14 @@ export function loadConfig(readFile = true): Config {
         throw new Error(`${label} repeats auto detection for ${provider}`)
       }
       autoProviders.add(provider)
-      accounts.push({ provider, alias, cache, auto: true })
+      accounts.push({
+        provider,
+        alias,
+        cache,
+        auto: true,
+        name: entry.data.name,
+        info: entry.data.info,
+      })
       continue
     }
 

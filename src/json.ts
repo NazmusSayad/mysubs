@@ -58,6 +58,8 @@ const {
   auto: autoProperty,
   alias: aliasProperty,
   cache: cacheProperty,
+  name: nameProperty,
+  info: infoProperty,
 } = entryProperties
 
 function addEntryProperties(node: JSONObject, provider: string): void {
@@ -105,6 +107,8 @@ for (const [name, provider] of Object.entries(providers)) {
       auto: autoProperty,
       alias: aliasProperty,
       cache: cacheProperty,
+      name: nameProperty,
+      info: infoProperty,
     },
     required: ['provider', 'auto'],
   })
