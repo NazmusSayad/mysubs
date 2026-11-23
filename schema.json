@@ -1,0 +1,783 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "cacheTTL": {
+      "default": "1m",
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        }
+      ]
+    },
+    "cache": {
+      "default": true,
+      "type": "boolean"
+    },
+    "detect": {
+      "default": true,
+      "type": "boolean"
+    },
+    "skipDetect": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "codex",
+          "opencode2-codex",
+          "claude",
+          "antigravity",
+          "copilot",
+          "openrouter",
+          "opencode"
+        ]
+      }
+    },
+    "contrast": {
+      "default": 0.4,
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "nerdFont": {
+      "default": false,
+      "type": "boolean"
+    },
+    "maxWidth": {
+      "default": 120,
+      "type": "number",
+      "minimum": 80
+    },
+    "accounts": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "const": "codex"
+                  },
+                  "alias": {
+                    "type": "string",
+                    "pattern": "^[^:\\s]+$"
+                  },
+                  "cache": {
+                    "type": "boolean"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "info": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "configDir": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "provider",
+                  "configDir"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "const": "codex"
+                  },
+                  "alias": {
+                    "type": "string",
+                    "pattern": "^[^:\\s]+$"
+                  },
+                  "cache": {
+                    "type": "boolean"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "info": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "adapter": {
+                    "type": "string",
+                    "const": "opencode-oauth"
+                  },
+                  "authPath": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "provider",
+                  "adapter"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "codex"
+              },
+              "auto": {
+                "type": "boolean",
+                "const": true
+              },
+              "alias": {
+                "type": "string",
+                "pattern": "^[^:\\s]+$"
+              },
+              "cache": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "provider",
+              "auto"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "opencode2-codex"
+              },
+              "alias": {
+                "type": "string",
+                "pattern": "^[^:\\s]+$"
+              },
+              "cache": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "databasePath": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "provider",
+              "label"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "opencode2-codex"
+              },
+              "auto": {
+                "type": "boolean",
+                "const": true
+              },
+              "alias": {
+                "type": "string",
+                "pattern": "^[^:\\s]+$"
+              },
+              "cache": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "provider",
+              "auto"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "claude"
+              },
+              "alias": {
+                "type": "string",
+                "pattern": "^[^:\\s]+$"
+              },
+              "cache": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              },
+              "configDir": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "provider",
+              "configDir"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "claude"
+              },
+              "auto": {
+                "type": "boolean",
+                "const": true
+              },
+              "alias": {
+                "type": "string",
+                "pattern": "^[^:\\s]+$"
+              },
+              "cache": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "provider",
+              "auto"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "antigravity"
+              },
+              "alias": {
+                "type": "string",
+                "pattern": "^[^:\\s]+$"
+              },
+              "cache": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              },
+              "cliPath": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "provider"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "antigravity"
+              },
+              "auto": {
+                "type": "boolean",
+                "const": true
+              },
+              "alias": {
+                "type": "string",
+                "pattern": "^[^:\\s]+$"
+              },
+              "cache": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "provider",
+              "auto"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "const": "copilot"
+                  },
+                  "alias": {
+                    "type": "string",
+                    "pattern": "^[^:\\s]+$"
+                  },
+                  "cache": {
+                    "type": "boolean"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "info": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "const": "token"
+                  },
+                  "token": {
+                    "type": "string",
+                    "pattern": "^(env|key):[A-Za-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "provider",
+                  "source",
+                  "token"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "const": "copilot"
+                  },
+                  "alias": {
+                    "type": "string",
+                    "pattern": "^[^:\\s]+$"
+                  },
+                  "cache": {
+                    "type": "boolean"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "info": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "const": "gh"
+                  }
+                },
+                "required": [
+                  "provider",
+                  "source"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "copilot"
+              },
+              "auto": {
+                "type": "boolean",
+                "const": true
+              },
+              "alias": {
+                "type": "string",
+                "pattern": "^[^:\\s]+$"
+              },
+              "cache": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "provider",
+              "auto"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "openrouter"
+              },
+              "alias": {
+                "type": "string",
+                "pattern": "^[^:\\s]+$"
+              },
+              "cache": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              },
+              "apiKey": {
+                "type": "string",
+                "pattern": "^(env|key):[A-Za-z0-9_]+$"
+              }
+            },
+            "required": [
+              "provider",
+              "apiKey"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "openrouter"
+              },
+              "auto": {
+                "type": "boolean",
+                "const": true
+              },
+              "alias": {
+                "type": "string",
+                "pattern": "^[^:\\s]+$"
+              },
+              "cache": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "provider",
+              "auto"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "const": "opencode"
+                  },
+                  "alias": {
+                    "type": "string",
+                    "pattern": "^[^:\\s]+$"
+                  },
+                  "cache": {
+                    "type": "boolean"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "info": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "product": {
+                    "type": "string",
+                    "const": "go"
+                  },
+                  "apiKey": {
+                    "type": "string",
+                    "pattern": "^(env|key):[A-Za-z0-9_]+$"
+                  }
+                },
+                "required": [
+                  "provider",
+                  "product",
+                  "apiKey"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "const": "opencode"
+                  },
+                  "alias": {
+                    "type": "string",
+                    "pattern": "^[^:\\s]+$"
+                  },
+                  "cache": {
+                    "type": "boolean"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "info": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "product": {
+                    "type": "string",
+                    "const": "zen"
+                  },
+                  "cookie": {
+                    "type": "string",
+                    "pattern": "^(env|key):[A-Za-z0-9_]+$"
+                  },
+                  "workspaceID": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "provider",
+                  "product",
+                  "cookie"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "const": "opencode"
+              },
+              "auto": {
+                "type": "boolean",
+                "const": true
+              },
+              "alias": {
+                "type": "string",
+                "pattern": "^[^:\\s]+$"
+              },
+              "cache": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "info": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "boolean",
+                    "const": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "provider",
+              "auto"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "$schema": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": {}
+}
