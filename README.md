@@ -7,6 +7,7 @@ Check how much of your AI subscriptions you have used, across accounts and provi
 ```sh
 mysubs            # show usage for all accounts
 mysubs codex      # show only codex accounts
+mysubs codex reset # use a Codex reset credit (ChatGPT logins only)
 mysubs work       # show only the account with the alias "work"
 mysubs codex:     # show only automatically detected codex accounts
 mysubs codex claude zen # select multiple providers or accounts

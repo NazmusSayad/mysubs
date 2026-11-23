@@ -10,7 +10,7 @@ import { providers } from './providers'
 import { parseTTL, readCache, writeCache } from './utils/cache'
 import { startProgress } from './utils/progress'
 
-type AccountTarget = {
+export type AccountTarget = {
   provider: string
   account: ProviderAccount
   options: ProviderOptions
@@ -44,7 +44,9 @@ function providerOptions(provider: string, cache: boolean): ProviderOptions {
   return entry.optionsSchema.parse({ cache })
 }
 
-async function collectAccountTargets(config: Config): Promise<AccountTarget[]> {
+export async function collectAccountTargets(
+  config: Config
+): Promise<AccountTarget[]> {
   const targets: AccountTarget[] = []
 
   for (const item of config.accounts) {
